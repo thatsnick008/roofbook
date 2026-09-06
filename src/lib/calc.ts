@@ -44,17 +44,25 @@ export function inFinancialYear(dateIso: string, fy: number, startMonth = FY_STA
   return financialYearOf(dateIso, startMonth) === fy;
 }
 
-export function totalCapitalRequired(purchase?: PurchaseDetails): number {
+export function totalCapitalRequired(purchase?: PurchaseDetails, loan?: Loan): number {
   if (!purchase) return 0;
-  return (
-    purchase.deposit +
+  const ancillaryCosts =
     purchase.stampDuty +
     purchase.legalFees +
     purchase.renovations +
     purchase.settlementFees +
     purchase.buildingAndPest +
     purchase.registrationFees +
-    purchase.otherCosts
+    purchase.otherCosts;
+  const financedAncillaryCosts = Math.min(
+    Math.max((loan?.loanBalance ?? purchase.loanAfterLmi) - purchase.purchasePrice, 0),
+    ancillaryCosts
+  );
+
+  return (
+    purchase.deposit +
+    ancillaryCosts -
+    financedAncillaryCosts
   );
 }
 
@@ -135,7 +143,7 @@ export function propertyMetrics(
   const interest = annualInterestForecast(loan);
   const annualDepreciation = property.annualDepreciation ?? 0;
   const totalExpenses = cashExpenses + managementFees + annualDepreciation;
-  const capitalRequired = totalCapitalRequired(purchase);
+  const capitalRequired = totalCapitalRequired(purchase, loan);
   const netCashflow = grossIncome - totalExpenses;
 
   return {

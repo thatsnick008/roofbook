@@ -215,7 +215,7 @@ export default function PropertyDetailPage() {
                 ))}
                 <div className="rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 sm:col-span-2 lg:col-span-3">
                   <dt className="text-[11px] uppercase tracking-wide text-brand">Total capital required</dt>
-                  <dd className="mt-0.5 text-2xl font-bold">{money(totalCapitalRequired(purchase))}</dd>
+                  <dd className="mt-0.5 text-2xl font-bold">{money(totalCapitalRequired(purchase, loan))}</dd>
                 </div>
               </dl>
             ) : (

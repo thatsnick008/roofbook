@@ -377,7 +377,7 @@ export function PropertyForm({
           </Field>
           <div className="flex items-center justify-between rounded-2xl border border-brand/30 bg-brand/10 px-4 py-3 sm:col-span-2">
             <span className="text-sm font-medium">Total capital required</span>
-            <span className="text-lg font-bold">{money(totalCapitalRequired(purchase))}</span>
+            <span className="text-lg font-bold">{money(totalCapitalRequired(purchase, loan))}</span>
           </div>
         </div>
       ) : null}
