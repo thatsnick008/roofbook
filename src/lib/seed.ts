@@ -27,6 +27,7 @@ export async function seedDemoData(): Promise<void> {
       annualDepreciation: 9200,
       valuationDate: "2026-06-30",
       accent: accentPalette[0],
+      taxTreatment: "offset",
       archived: false,
       createdAt: stamp,
       updatedAt: stamp
@@ -49,6 +50,7 @@ export async function seedDemoData(): Promise<void> {
       annualDepreciation: 6800,
       valuationDate: "2026-06-30",
       accent: accentPalette[2],
+      taxTreatment: "offset",
       archived: false,
       createdAt: stamp,
       updatedAt: stamp
