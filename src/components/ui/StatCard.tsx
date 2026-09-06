@@ -10,7 +10,8 @@ export function StatCard({
   helper,
   delta,
   icon,
-  tone = "brand"
+  tone = "brand",
+  className
 }: {
   label: string;
   value: string;
@@ -18,6 +19,7 @@ export function StatCard({
   delta?: number;
   icon?: React.ReactNode;
   tone?: "brand" | "positive" | "negative" | "warning";
+  className?: string;
 }) {
   const toneClass = {
     brand: "from-brand/20 to-transparent text-brand",
@@ -27,7 +29,7 @@ export function StatCard({
   }[tone];
 
   return (
-    <div className="card relative overflow-hidden p-5 animate-fade-up">
+    <div className={cn("card relative overflow-hidden p-5 animate-fade-up", className)}>
       <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-70", toneClass)} />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">

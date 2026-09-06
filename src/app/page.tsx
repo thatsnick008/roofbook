@@ -109,14 +109,16 @@ export default function DashboardPage() {
         }
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <StatCard
+          className="p-4"
           label="Portfolio value"
           value={money(totals.valuation)}
           helper={`${percent(totals.lvr, 1)} LVR`}
           icon={<Building2 size={20} />}
         />
         <StatCard
+          className="p-4"
           label="Net equity"
           value={money(totals.equity)}
           helper={`${compactMoney(totals.offset)} in offset`}
@@ -124,6 +126,7 @@ export default function DashboardPage() {
           icon={<PiggyBank size={20} />}
         />
         <StatCard
+          className="p-4"
           label="Debt"
           value={money(totals.debt)}
           helper="Across all facilities"
@@ -131,6 +134,7 @@ export default function DashboardPage() {
           icon={<Banknote size={20} />}
         />
         <StatCard
+          className="p-4"
           label="Net cashflow"
           value={money(latestMonth?.net ?? 0)}
           helper={`${latestMonth?.month ?? "This month"} · ${money(totals.cashflow)} total`}
@@ -138,6 +142,7 @@ export default function DashboardPage() {
           icon={<TrendingUp size={20} />}
         />
         <StatCard
+          className="p-4"
           label="Net LVR"
           value={percent(totals.netLvr, 1)}
           helper={`${compactMoney(totals.offset)} offset against debt`}
