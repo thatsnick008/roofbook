@@ -106,6 +106,7 @@ export interface PropertyMetrics {
   offset: number;
   equity: number;
   lvr: number;
+  netLvr: number;
   income: number;
   expenses: number;
   interest: number;
