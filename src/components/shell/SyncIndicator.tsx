@@ -6,7 +6,7 @@ import { useSync } from "@/components/providers/SyncProvider";
 import { cn } from "@/lib/format";
 
 export function SyncIndicator() {
-  const { status, lastSyncedAt, sync } = useSync();
+  const { status, lastSyncedAt, error, sync } = useSync();
 
   const label =
     status === "syncing"
@@ -25,7 +25,7 @@ export function SyncIndicator() {
   return (
     <button
       onClick={() => void sync()}
-      title={label}
+      title={error ?? label}
       className={cn(
         "flex items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 py-2 text-xs font-medium transition hover:border-brand/40",
         tone

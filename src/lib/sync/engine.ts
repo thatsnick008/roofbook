@@ -64,7 +64,13 @@ export async function runSync(options: { full?: boolean } = {}): Promise<SyncRes
       })
     });
 
-    payload = await response.json();
+    payload = await response.json().catch(() => ({
+      ok: false,
+      serverTime: "",
+      changes: {},
+      deletes: [],
+      error: `Sync failed (${response.status})`
+    }));
     if (!response.ok || !payload.ok) {
       const error = payload?.error ?? `Sync failed (${response.status})`;
       await saveSyncMeta({ lastError: error });

@@ -32,9 +32,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 });
   }
 
+  try {
+    return await syncChanges(parsed.data, userId);
+  } catch (error) {
+    console.error("[sync] request failed", error);
+    return NextResponse.json(
+      { ok: false, error: "Cloud sync failed. Apply the latest database migrations and try again." },
+      { status: 500 }
+    );
+  }
+}
+
+async function syncChanges(parsed: any, userId: string) {
   const db = getDb();
   const orm = db as any;
-  const { since, changes, deletes, settings } = parsed.data;
+  const { since, changes, deletes, settings } = parsed;
   const serverTime = new Date();
 
   if (settings) {
