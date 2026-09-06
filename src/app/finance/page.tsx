@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Banknote, Download, PiggyBank, Percent } from "lucide-react";
+import { Banknote, PiggyBank, Percent } from "lucide-react";
 import { db, nowIso } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -12,8 +12,6 @@ import { StatCard } from "@/components/ui/StatCard";
 import { useLoans, useProperties } from "@/hooks/useData";
 import { annualInterestForecast, monthlyRepayment, offsetSavingsPerYear, sum } from "@/lib/calc";
 import { money, percent, titleise } from "@/lib/format";
-import { exportSingleSheet } from "@/lib/export/excel";
-import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
 import type { Loan } from "@/lib/types";
 
@@ -39,13 +37,6 @@ export default function FinancePage() {
       <PageHeader
         title="Finance & Offset"
         subtitle="Loan structure, interest forecasting and offset optimisation."
-        actions={
-          {EXPORTS_ENABLED ? (
-            <Button variant="secondary" onClick={() => exportSingleSheet("Finance & Offset")}>
-              <Download size={16} /> Export Excel
-            </Button>
-          ) : null}
-        }
       />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
