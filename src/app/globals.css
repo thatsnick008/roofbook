@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --bg: 246 247 251;
+  --surface: 255 255 255;
+  --elevated: 255 255 255;
+  --border: 226 231 240;
+  --muted: 100 116 139;
+  --fg: 15 23 42;
+  --brand: 37 99 235;
+  --brand-soft: 219 234 254;
+  --positive: 16 185 129;
+  --negative: 244 63 94;
+  --warning: 245 158 11;
+}
+
+.dark {
+  --bg: 8 11 20;
+  --surface: 17 22 34;
+  --elevated: 23 29 43;
+  --border: 39 47 64;
+  --muted: 148 163 184;
+  --fg: 236 241 248;
+  --brand: 96 165 250;
+  --brand-soft: 30 58 138;
+  --positive: 52 211 153;
+  --negative: 251 113 133;
+  --warning: 251 191 36;
+}
+
+* {
+  border-color: rgb(var(--border));
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1000px 600px at 12% -10%, rgb(var(--brand) / 0.14), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgb(var(--positive) / 0.1), transparent 55%);
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-border bg-surface/90 shadow-card backdrop-blur-xl;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted;
+  }
+
+  .input {
+    @apply h-11 w-full rounded-xl border border-border bg-bg/60 px-3.5 text-sm text-fg outline-none transition
+      placeholder:text-muted/70 focus:border-brand focus:ring-4 focus:ring-brand/15;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-2.5 py-1 text-xs font-medium text-muted;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-all
+      hover:bg-brand/10 hover:text-fg;
+  }
+
+  .nav-item-active {
+    @apply bg-brand/10 text-fg shadow-[inset_0_0_0_1px_rgb(var(--brand)/0.28)];
+  }
+
+  .table-wrap {
+    @apply w-full overflow-x-auto rounded-2xl border border-border bg-surface;
+  }
+
+  .data-table {
+    @apply w-full min-w-[720px] border-collapse text-sm;
+  }
+
+  .data-table thead th {
+    @apply sticky top-0 z-10 whitespace-nowrap bg-elevated/95 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted backdrop-blur;
+  }
+
+  .data-table tbody td {
+    @apply whitespace-nowrap border-t border-border px-4 py-3;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-brand/5;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted) / 0.35);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
