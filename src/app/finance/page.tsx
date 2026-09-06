@@ -13,6 +13,7 @@ import { useLoans, useProperties } from "@/hooks/useData";
 import { annualInterestForecast, monthlyRepayment, offsetSavingsPerYear, sum } from "@/lib/calc";
 import { money, percent, titleise } from "@/lib/format";
 import { exportSingleSheet } from "@/lib/export/excel";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
 import type { Loan } from "@/lib/types";
 
@@ -39,9 +40,11 @@ export default function FinancePage() {
         title="Finance & Offset"
         subtitle="Loan structure, interest forecasting and offset optimisation."
         actions={
-          <Button variant="secondary" onClick={() => exportSingleSheet("Finance & Offset")}>
-            <Download size={16} /> Export Excel
-          </Button>
+          {EXPORTS_ENABLED ? (
+            <Button variant="secondary" onClick={() => exportSingleSheet("Finance & Offset")}>
+              <Download size={16} /> Export Excel
+            </Button>
+          ) : null}
         }
       />
 

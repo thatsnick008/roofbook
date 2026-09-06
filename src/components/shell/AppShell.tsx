@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Building2, Command, LogOut, Moon, Plus, Sun } from "lucide-react";
+import { Building2, Command, LogOut, Moon, Plus, Settings2, Sun } from "lucide-react";
 import { navItems } from "@/lib/nav";
 import { cn, initials } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -13,16 +13,50 @@ import { SyncIndicator } from "./SyncIndicator";
 import { CommandPalette } from "./CommandPalette";
 import { QuickAdd } from "@/components/quick/QuickAdd";
 import { APP_VERSION } from "@/lib/version";
+import { Modal } from "@/components/ui/Modal";
+import { Field, Input } from "@/components/ui/Field";
+import { useToast } from "@/components/ui/Toast";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { resolved, toggle } = useTheme();
   const { data: session } = useSession();
+  const toast = useToast();
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [quickOpen, setQuickOpen] = React.useState(false);
+  const [accountOpen, setAccountOpen] = React.useState(false);
+  const [account, setAccount] = React.useState({ name: "", email: "", password: "" });
+  const [accountSaving, setAccountSaving] = React.useState(false);
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const mobileItems = navItems.filter((item) => item.mobile);
+
+  const openAccount = async () => {
+    setAccountOpen(true);
+    const response = await fetch("/api/auth/account");
+    if (!response.ok) return;
+    const result = await response.json();
+    setAccount({ name: result.user.name ?? "", email: result.user.email ?? "", password: "" });
+  };
+
+  const saveAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAccountSaving(true);
+    const response = await fetch("/api/auth/account", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(account)
+    });
+    const result = await response.json();
+    setAccountSaving(false);
+    if (!response.ok) {
+      toast(result.error ?? "Could not update account", "error");
+      return;
+    }
+    toast("Account details updated");
+    setAccount((current) => ({ ...current, password: "" }));
+    setAccountOpen(false);
+  };
 
   return (
     <div className="relative z-10 flex min-h-screen">
@@ -67,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur-xl sm:px-6">
+        <header className="no-print sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-bg/80 px-3 py-2 backdrop-blur-xl sm:px-6">
           <div className="flex items-center gap-2 lg:hidden">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-white">
               <Building2 size={18} />
@@ -88,15 +122,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-2">
             <SyncIndicator />
-            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
+            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={toggle} aria-label="Toggle theme">
               {resolved === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </Button>
             {session?.user ? (
               <div className="flex items-center gap-2">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-brand/15 text-xs font-bold text-brand">
+                <button
+                  type="button"
+                  onClick={() => void openAccount()}
+                  className="grid h-9 w-9 place-items-center rounded-full bg-brand/15 text-xs font-bold text-brand transition hover:ring-4 hover:ring-brand/15"
+                  aria-label="Edit account details"
+                >
                   {initials(session.user.name ?? session.user.email ?? "U")}
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => signOut()} aria-label="Sign out">
+                </button>
+                <Button variant="ghost" size="icon" className="hidden min-h-11 min-w-11 sm:inline-flex" onClick={() => void openAccount()} aria-label="Account settings">
+                  <Settings2 size={17} />
+                </Button>
+                <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => signOut()} aria-label="Sign out">
                   <LogOut size={17} />
                 </Button>
               </div>
@@ -116,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted transition",
+                "flex min-h-16 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium text-muted transition",
                 isActive(item.href) && "text-brand"
               )}
             >
@@ -137,6 +179,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <QuickAdd open={quickOpen} onClose={() => setQuickOpen(false)} />
+      <Modal open={accountOpen} onClose={() => setAccountOpen(false)} title="Account details" description="Update your name, email, or password.">
+        <form onSubmit={saveAccount} className="space-y-4">
+          <Field label="Name">
+            <Input value={account.name} onChange={(event) => setAccount((current) => ({ ...current, name: event.target.value }))} required />
+          </Field>
+          <Field label="Email">
+            <Input type="email" value={account.email} onChange={(event) => setAccount((current) => ({ ...current, email: event.target.value }))} required />
+          </Field>
+          <Field label="New password" hint="Leave blank to keep the current password.">
+            <Input type="password" minLength={8} value={account.password} onChange={(event) => setAccount((current) => ({ ...current, password: event.target.value }))} />
+          </Field>
+          <Button type="submit" className="w-full" disabled={accountSaving}>{accountSaving ? "Saving…" : "Save account details"}</Button>
+        </form>
+      </Modal>
     </div>
   );
 }

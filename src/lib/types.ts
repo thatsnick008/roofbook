@@ -2,6 +2,7 @@ export type ID = string;
 
 export type PropertyStatus = "owned" | "under-contract" | "listed" | "sold";
 export type PropertyType = "house" | "townhouse" | "unit" | "duplex" | "land" | "commercial";
+export type PropertyTaxTreatment = "offset" | "retain";
 
 export interface Property {
   id: ID;
@@ -18,8 +19,10 @@ export interface Property {
   carSpaces: number;
   landSize: number;
   currentValuation: number;
+  annualDepreciation: number;
   valuationDate?: string;
   accent: string;
+  taxTreatment: PropertyTaxTreatment;
   notes?: string;
   archived: boolean;
   createdAt: string;
@@ -224,6 +227,7 @@ export interface PortfolioTotals {
   offset: number;
   equity: number;
   lvr: number;
+  netLvr: number;
   income: number;
   expenses: number;
   cashflow: number;

@@ -12,6 +12,7 @@ import { useSync } from "@/components/providers/SyncProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { exportBackup, importBackup } from "@/lib/export/backup";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import { seedDemoData } from "@/lib/seed";
 import { formatDate, cn } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
@@ -177,20 +178,24 @@ export default function SettingsPage() {
               Last backup: <span className="font-medium text-fg">{formatDate(settings?.lastBackupAt)}</span>
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={async () => {
-                  await exportBackup();
-                  toast("Backup downloaded");
-                }}
-              >
-                <Download size={16} /> Export backup
-              </Button>
+              {EXPORTS_ENABLED ? (
+                <Button
+                  onClick={async () => {
+                    await exportBackup();
+                    toast("Backup downloaded");
+                  }}
+                >
+                  <Download size={16} /> Export backup
+                </Button>
+              ) : null}
               <Button variant="secondary" onClick={() => fileRef.current?.click()}>
                 <Upload size={16} /> Restore backup
               </Button>
-              <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
-                <Download size={16} /> Export Excel
-              </Button>
+              {EXPORTS_ENABLED ? (
+                <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
+                  <Download size={16} /> Export Excel
+                </Button>
+              ) : null}
             </div>
             <input
               ref={fileRef}

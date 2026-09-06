@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { accentPalette, australianStates, propertyStatuses, propertyTypes } from "@/lib/options";
 import { titleise, todayIso, money, cn } from "@/lib/format";
 import { totalCapitalRequired } from "@/lib/calc";
-import type { Loan, Property, PurchaseDetails } from "@/lib/types";
+import type { Loan, Property, PurchaseDetails, PropertyTaxTreatment } from "@/lib/types";
 
 const emptyProperty = (): Property => ({
   id: uid(),
@@ -26,7 +26,9 @@ const emptyProperty = (): Property => ({
   carSpaces: 1,
   landSize: 400,
   currentValuation: 0,
+  annualDepreciation: 0,
   accent: accentPalette[0],
+  taxTreatment: "offset",
   archived: false,
   createdAt: nowIso(),
   updatedAt: nowIso()
@@ -261,6 +263,21 @@ export function PropertyForm({
               value={property.valuationDate ?? ""}
               onChange={(event) => patchProperty({ valuationDate: event.target.value })}
             />
+          </Field>
+          <Field label="Yearly depreciation" hint="Annual non-cash depreciation used in net cashflow.">
+            <MoneyInput
+              value={property.annualDepreciation}
+              onValueChange={(value) => patchProperty({ annualDepreciation: value })}
+            />
+          </Field>
+          <Field label="Tax treatment" hint="Choose where this property's profit or loss is reported.">
+            <Select
+              value={property.taxTreatment}
+              onChange={(event) => patchProperty({ taxTreatment: event.target.value as PropertyTaxTreatment })}
+            >
+              <option value="offset">Offset against tax</option>
+              <option value="retain">Hold within property</option>
+            </Select>
           </Field>
           <Field label="Accent colour" className="sm:col-span-2">
             <div className="flex flex-wrap gap-2">

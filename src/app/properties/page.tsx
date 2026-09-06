@@ -11,6 +11,7 @@ import { PropertyForm } from "@/components/forms/PropertyForm";
 import { usePortfolio } from "@/hooks/useData";
 import { compactMoney, money, percent, titleise } from "@/lib/format";
 import { exportSingleSheet } from "@/lib/export/excel";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import { propertyStatuses } from "@/lib/options";
 
 export default function PropertiesPage() {
@@ -45,9 +46,11 @@ export default function PropertiesPage() {
         subtitle="Every asset, its acquisition costs and live performance."
         actions={
           <>
-            <Button variant="secondary" onClick={() => exportSingleSheet("Properties")}>
-              <Download size={16} /> Excel
-            </Button>
+            {EXPORTS_ENABLED ? (
+              <Button variant="secondary" onClick={() => exportSingleSheet("Properties")}>
+                <Download size={16} /> Excel
+              </Button>
+            ) : null}
             <Button onClick={() => setAddOpen(true)}>
               <Building2 size={16} /> Add property
             </Button>

@@ -13,6 +13,7 @@ import { useExpenses, useIncome, useProperties } from "@/hooks/useData";
 import { availableFinancialYears, financialYearLabel, inFinancialYear, sum } from "@/lib/calc";
 import { formatDate, money, titleise } from "@/lib/format";
 import { exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
 import type { IncomeEntry } from "@/lib/types";
 
@@ -50,12 +51,16 @@ export default function IncomePage() {
         subtitle="Rent, arrears recovery and other property income."
         actions={
           <>
-            <Button variant="secondary" onClick={() => exportSingleSheetCsv("Income", fy === "all" ? undefined : fy)}>
-              <FileSpreadsheet size={16} /> CSV
-            </Button>
-            <Button variant="secondary" onClick={() => exportSingleSheet("Income", fy === "all" ? undefined : fy)}>
-              <Download size={16} /> Excel
-            </Button>
+            {EXPORTS_ENABLED ? (
+              <>
+                <Button variant="secondary" onClick={() => exportSingleSheetCsv("Income", fy === "all" ? undefined : fy)}>
+                  <FileSpreadsheet size={16} /> CSV
+                </Button>
+                <Button variant="secondary" onClick={() => exportSingleSheet("Income", fy === "all" ? undefined : fy)}>
+                  <Download size={16} /> Excel
+                </Button>
+              </>
+            ) : null}
             <Button
               onClick={() => {
                 setEditing(undefined);

@@ -24,6 +24,7 @@ import {
 } from "@/lib/calc";
 import { cn, formatDate, money, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
 
 const tabs = ["Overview", "Purchase", "Finance", "Income", "Expenses"] as const;
@@ -67,7 +68,7 @@ export default function PropertyDetailPage() {
 
   const { property, purchase, loan, income, expenses, reminders } = data;
   const metric = propertyMetrics(property, purchase, loan, income, expenses);
-  const monthly = groupByMonth(income, expenses);
+  const monthly = groupByMonth(income, expenses, metric.annualDepreciation);
 
   const remove = async () => {
     if (!window.confirm(`Delete ${property.name} and all associated records? This cannot be undone.`)) return;
@@ -90,9 +91,11 @@ export default function PropertyDetailPage() {
             <Button variant="secondary" onClick={() => setQuickOpen(true)}>
               <Plus size={16} /> Add entry
             </Button>
-            <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
-              <Download size={16} /> Excel
-            </Button>
+            {EXPORTS_ENABLED ? (
+              <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
+                <Download size={16} /> Excel
+              </Button>
+            ) : null}
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil size={16} /> Edit
             </Button>

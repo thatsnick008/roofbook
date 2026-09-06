@@ -22,8 +22,10 @@ const propertySchema = z.object({
   carSpaces: z.number().int().min(0).max(99).default(0),
   landSize: money,
   currentValuation: money,
+  annualDepreciation: money,
   valuationDate: text(40).optional().nullable(),
   accent: text(32).default("#2563eb"),
+  taxTreatment: z.enum(["offset", "retain"]).default("offset"),
   notes: text(4000).optional().nullable(),
   archived: z.boolean().default(false),
   createdAt: iso

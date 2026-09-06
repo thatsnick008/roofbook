@@ -12,6 +12,7 @@ import { useProperties, useReminders } from "@/hooks/useData";
 import { nextOccurrence } from "@/lib/calc";
 import { cn, daysUntil, formatDate, titleise } from "@/lib/format";
 import { exportSingleSheet } from "@/lib/export/excel";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
 import type { Reminder } from "@/lib/types";
 
@@ -54,9 +55,11 @@ export default function RemindersPage() {
         subtitle="Insurance, leases, inspections and compliance — with email lead times."
         actions={
           <>
-            <Button variant="secondary" onClick={() => exportSingleSheet("Reminders")}>
-              <Download size={16} /> Excel
-            </Button>
+            {EXPORTS_ENABLED ? (
+              <Button variant="secondary" onClick={() => exportSingleSheet("Reminders")}>
+                <Download size={16} /> Excel
+              </Button>
+            ) : null}
             <Button
               onClick={() => {
                 setEditing(undefined);

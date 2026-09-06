@@ -20,12 +20,13 @@ import { StatCard } from "@/components/ui/StatCard";
 import { CashflowChart, CategoryDonut, EquityTrend } from "@/components/charts/Charts";
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
-import { groupByMonth } from "@/lib/calc";
+import { groupByMonth, sum } from "@/lib/calc";
 import { compactMoney, daysUntil, formatDate, money, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { seedDemoData } from "@/lib/seed";
 import { useToast } from "@/components/ui/Toast";
 import { accentPalette } from "@/lib/options";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import type { ExpenseEntry, IncomeEntry, Reminder } from "@/lib/types";
 
 const EMPTY_INCOME: IncomeEntry[] = [];
@@ -40,7 +41,9 @@ export default function DashboardPage() {
   const reminders = useReminders() ?? EMPTY_REMINDERS;
   const [addOpen, setAddOpen] = React.useState(false);
 
-  const monthly = React.useMemo(() => groupByMonth(income, expenses), [income, expenses]);
+  const annualDepreciation = sum(metrics.map((metric) => metric.annualDepreciation));
+  const monthly = React.useMemo(() => groupByMonth(income, expenses, annualDepreciation), [income, expenses, annualDepreciation]);
+  const latestMonth = monthly[monthly.length - 1];
   const upcoming = reminders.filter((reminder) => !reminder.completed).slice(0, 5);
 
   const categoryData = React.useMemo(() => {
@@ -94,9 +97,11 @@ export default function DashboardPage() {
         subtitle={`${totals.properties} ${totals.properties === 1 ? "property" : "properties"} · data stored locally on this device`}
         actions={
           <>
-            <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
-              <Download size={16} /> Export Excel
-            </Button>
+            {EXPORTS_ENABLED ? (
+              <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
+                <Download size={16} /> Export Excel
+              </Button>
+            ) : null}
             <Button onClick={() => setAddOpen(true)}>
               <Building2 size={16} /> Add property
             </Button>
@@ -127,10 +132,16 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Net cashflow"
-          value={money(totals.cashflow)}
-          helper={`${percent(totals.netYield, 2)} net yield`}
+          value={money(latestMonth?.net ?? 0)}
+          helper={`${latestMonth?.month ?? "This month"} · ${money(totals.cashflow)} total`}
           tone={totals.cashflow >= 0 ? "positive" : "warning"}
           icon={<TrendingUp size={20} />}
+        />
+        <StatCard
+          label="Net LVR"
+          value={percent(totals.netLvr, 1)}
+          helper={`${compactMoney(totals.offset)} offset against debt`}
+          icon={<Wallet size={20} />}
         />
       </section>
 

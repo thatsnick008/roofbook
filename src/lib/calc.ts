@@ -109,6 +109,7 @@ export interface PropertyMetrics {
   income: number;
   expenses: number;
   interest: number;
+  annualDepreciation: number;
   cashflow: number;
   grossYield: number;
   netYield: number;
@@ -131,7 +132,8 @@ export function propertyMetrics(
   const managementFees = sum(income.map((entry) => entry.managementFee));
   const cashExpenses = sum(expenses.filter((entry) => !entry.capital).map((entry) => entry.amount));
   const interest = annualInterestForecast(loan);
-  const totalExpenses = cashExpenses + managementFees;
+  const annualDepreciation = property.annualDepreciation ?? 0;
+  const totalExpenses = cashExpenses + managementFees + annualDepreciation;
   const capitalRequired = totalCapitalRequired(purchase);
   const netCashflow = grossIncome - totalExpenses;
 
@@ -144,9 +146,11 @@ export function propertyMetrics(
     offset,
     equity: valuation - debt + offset,
     lvr: valuation > 0 ? (debt / valuation) * 100 : 0,
+    netLvr: valuation > 0 ? (Math.max(debt - offset, 0) / valuation) * 100 : 0,
     income: grossIncome,
     expenses: totalExpenses,
     interest,
+    annualDepreciation,
     cashflow: netCashflow,
     grossYield: valuation > 0 ? (annualise(income) / valuation) * 100 : 0,
     netYield: valuation > 0 ? ((annualise(income) - totalExpenses) / valuation) * 100 : 0,
@@ -170,6 +174,7 @@ export function portfolioTotals(metrics: PropertyMetrics[]): PortfolioTotals {
     offset,
     equity: valuation - debt + offset,
     lvr: valuation > 0 ? (debt / valuation) * 100 : 0,
+    netLvr: valuation > 0 ? (Math.max(debt - offset, 0) / valuation) * 100 : 0,
     income,
     expenses,
     cashflow: income - expenses,
@@ -195,7 +200,8 @@ export function sum(values: number[]): number {
 
 export function groupByMonth(
   income: IncomeEntry[],
-  expenses: ExpenseEntry[]
+  expenses: ExpenseEntry[],
+  annualDepreciation = 0
 ): { month: string; income: number; expenses: number; net: number }[] {
   const buckets = new Map<string, { income: number; expenses: number }>();
   const key = (iso: string) => iso.slice(0, 7);
@@ -210,6 +216,11 @@ export function groupByMonth(
     const bucket = buckets.get(key(entry.date)) ?? { income: 0, expenses: 0 };
     bucket.expenses += entry.amount;
     buckets.set(key(entry.date), bucket);
+  });
+
+  const depreciationPerMonth = annualDepreciation / 12;
+  buckets.forEach((bucket) => {
+    bucket.expenses += depreciationPerMonth;
   });
 
   return [...buckets.entries()]

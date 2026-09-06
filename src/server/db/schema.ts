@@ -8,6 +8,13 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  token: text("token").primaryKey(),
+  userId: text("user_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
 const owned = {
   id: text("id").notNull(),
   userId: text("user_id").notNull(),
@@ -32,8 +39,10 @@ export const properties = pgTable(
     carSpaces: integer("car_spaces").notNull().default(0),
     landSize: doublePrecision("land_size").notNull().default(0),
     currentValuation: doublePrecision("current_valuation").notNull().default(0),
+    annualDepreciation: doublePrecision("annual_depreciation").notNull().default(0),
     valuationDate: text("valuation_date"),
     accent: text("accent").notNull().default("#2563eb"),
+    taxTreatment: text("tax_treatment").notNull().default("offset"),
     notes: text("notes"),
     archived: boolean("archived").notNull().default(false),
     createdAt: text("created_at").notNull()
@@ -211,4 +220,16 @@ export const userSettings = pgTable("user_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
-export const schema = { properties, purchases, loans, income, expenses, contacts, reminders, documents, userSettings, users };
+export const schema = {
+  properties,
+  purchases,
+  loans,
+  income,
+  expenses,
+  contacts,
+  reminders,
+  documents,
+  userSettings,
+  users,
+  passwordResetTokens
+};

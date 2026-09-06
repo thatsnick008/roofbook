@@ -1,0 +1,1 @@
+export const EXPORTS_ENABLED = process.env.NEXT_PUBLIC_EXPORTS_ENABLED === "true";

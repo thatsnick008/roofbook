@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { AlertTriangle, Building2, CloudOff, Eye, EyeOff, ShieldCheck, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +27,7 @@ function AuthGateInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const [offlineAllowed, setOfflineAllowed] = React.useState(false);
   const authError = searchParams?.get("error") ?? null;
+  const resetToken = searchParams?.get("reset");
 
   React.useEffect(() => {
     if (status === "authenticated") {
@@ -65,16 +66,19 @@ function AuthGateInner({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <SignInCard initialError={authError} />;
+  return <SignInCard initialError={authError} resetToken={resetToken} />;
 }
 
-function SignInCard({ initialError }: { initialError: string | null }) {
+function SignInCard({ initialError, resetToken }: { initialError: string | null; resetToken: string | null }) {
+  const router = useRouter();
   const [mode, setMode] = React.useState<"signin" | "signup">("signin");
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [forgot, setForgot] = React.useState(false);
+  const [resetPassword, setResetPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(
     initialError ? (ERROR_MESSAGES[initialError] ?? "Sign-in failed. Please try again.") : null
   );
@@ -116,6 +120,22 @@ function SignInCard({ initialError }: { initialError: string | null }) {
     }
   };
 
+  const recover = async () => {
+    setSubmitting(true);
+    const response = await fetch(resetToken ? "/api/auth/reset-password" : "/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(resetToken ? { token: resetToken, password: resetPassword } : { email })
+    });
+    const result = await response.json();
+    setError(result.error ?? result.message);
+    setSubmitting(false);
+    if (response.ok && resetToken) {
+      router.replace("/");
+      setForgot(false);
+    }
+  };
+
   return (
     <div className="relative z-10 grid min-h-screen place-items-center px-5 py-12">
       <div className="w-full max-w-md">
@@ -148,6 +168,27 @@ function SignInCard({ initialError }: { initialError: string | null }) {
                 </button>
               ))}
             </div>
+
+            {mode === "signin" ? (
+              <button type="button" className="mb-4 text-left text-sm font-semibold text-brand" onClick={() => setForgot(true)}>
+                Forgot password?
+              </button>
+            ) : null}
+
+            {forgot ? (
+              <div className="mb-4 rounded-2xl border border-brand/30 bg-brand/5 p-4">
+                <p className="text-sm font-semibold">{resetToken ? "Choose a new password" : "Reset your password"}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {resetToken ? "Use at least 8 characters." : "We will email a secure reset link if the account exists."}
+                </p>
+                {resetToken ? (
+                  <Input className="mt-3" type="password" minLength={8} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} placeholder="New password" />
+                ) : null}
+                <Button type="button" className="mt-3 w-full" onClick={recover} disabled={submitting}>
+                  {submitting ? "Please wait…" : resetToken ? "Set new password" : "Email reset link"}
+                </Button>
+              </div>
+            ) : null}
 
             {error ? (
               <div className="mb-4 flex items-start gap-2 rounded-xl border border-negative/30 bg-negative/10 px-3.5 py-3 text-sm text-negative">

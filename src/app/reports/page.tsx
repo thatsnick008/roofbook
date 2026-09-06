@@ -19,6 +19,7 @@ import {
 import { formatDate, money, percent, titleise } from "@/lib/format";
 import { exportBudgetWorkbook, exportPortfolioWorkbook, exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
 import { exportPortfolioPdf } from "@/lib/export/pdf";
+import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
 
 const sheetShortcuts = [
@@ -93,15 +94,19 @@ export default function ReportsPage() {
                 </option>
               ))}
             </Select>
-            <Button variant="secondary" onClick={() => run(() => exportPortfolioPdf(fy), "PDF report")}>
-              <FileText size={16} /> PDF
-            </Button>
-            <Button onClick={() => run(() => exportPortfolioWorkbook(fy), "Excel workbook")}>
-              <FileSpreadsheet size={16} /> Excel workbook
-            </Button>
-            <Button variant="secondary" onClick={() => run(() => exportBudgetWorkbook(), "Budgeting workbook")}>
-              <FileSpreadsheet size={16} /> Budgeting format
-            </Button>
+            {EXPORTS_ENABLED ? (
+              <>
+                <Button variant="secondary" onClick={() => run(() => exportPortfolioPdf(fy), "PDF report")}>
+                  <FileText size={16} /> PDF
+                </Button>
+                <Button onClick={() => run(() => exportPortfolioWorkbook(fy), "Excel workbook")}>
+                  <FileSpreadsheet size={16} /> Excel workbook
+                </Button>
+                <Button variant="secondary" onClick={() => run(() => exportBudgetWorkbook(), "Budgeting workbook")}>
+                  <FileSpreadsheet size={16} /> Budgeting format
+                </Button>
+              </>
+            ) : null}
           </>
         }
       />
@@ -118,7 +123,7 @@ export default function ReportsPage() {
         />
       </section>
 
-      <Card>
+      {EXPORTS_ENABLED ? <Card>
         <CardHeader title="Accountant export pack" subtitle="One click per schedule — Excel or CSV" />
         <CardBody className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {sheetShortcuts.map((sheet) => (
@@ -135,7 +140,7 @@ export default function ReportsPage() {
             </div>
           ))}
         </CardBody>
-      </Card>
+      </Card> : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
