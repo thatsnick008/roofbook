@@ -12,6 +12,7 @@ import { useTheme } from "@/components/providers/ThemeProvider";
 import { SyncIndicator } from "./SyncIndicator";
 import { CommandPalette } from "./CommandPalette";
 import { QuickAdd } from "@/components/quick/QuickAdd";
+import { APP_VERSION } from "@/lib/version";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <p className="text-sm font-bold leading-tight text-brand">Roofbook</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted">v{APP_VERSION}</p>
           </div>
         </div>
 
@@ -70,7 +72,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-white">
               <Building2 size={18} />
             </div>
-            <span className="text-sm font-bold">Roofbook</span>
+            <div>
+              <p className="text-sm font-bold leading-tight">Roofbook</p>
+              <p className="text-[9px] font-medium uppercase tracking-wider text-muted">v{APP_VERSION}</p>
+            </div>
           </div>
 
           <button
