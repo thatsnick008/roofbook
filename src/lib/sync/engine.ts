@@ -8,6 +8,8 @@ export interface SyncResult {
   error?: string;
 }
 
+export type SyncOverwrite = "server" | "device";
+
 type Row = Record<string, unknown> & { id: string; updatedAt?: string; createdAt?: string };
 
 type SyncPayload = {
@@ -21,13 +23,17 @@ type SyncPayload = {
 const changedSince = (row: Row, since?: string): boolean =>
   !since || String(row.updatedAt ?? row.createdAt ?? "") > since;
 
-export async function runSync(options: { full?: boolean } = {}): Promise<SyncResult> {
+export async function runSync(options: { full?: boolean; overwrite?: SyncOverwrite } = {}): Promise<SyncResult> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { ok: false, pushed: 0, pulled: 0, error: "offline" };
   }
 
+  if (options.overwrite === "server") {
+    return await restoreFromServer("Using server values");
+  }
+
   const meta = await getSyncMeta();
-  const since = options.full ? undefined : meta.lastSyncedAt;
+  const since = options.full || options.overwrite === "device" ? undefined : meta.lastSyncedAt;
 
   const changes: Record<string, Row[]> = {};
   let pushed = 0;
@@ -65,7 +71,8 @@ export async function runSync(options: { full?: boolean } = {}): Promise<SyncRes
     payload = syncPayload;
     if (!response.ok || !payload.ok) {
       const error = payload?.error ?? `Sync failed (${response.status})`;
-      return await restoreFromServer(error);
+      await saveSyncMeta({ lastError: error });
+      return { ok: false, pushed: 0, pulled: 0, error };
     }
   } catch {
     await saveSyncMeta({ lastError: "Network unavailable" });

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/format";
+import type { CurrencyCode } from "@/lib/types";
 
 export function Field({
   label,
@@ -58,21 +59,27 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
 export function MoneyInput({
   value,
   onValueChange,
+  currency = "AUD",
   className,
   onFocus,
   ...props
 }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & {
   value: number;
   onValueChange: (value: number) => void;
+  currency?: CurrencyCode;
 }) {
+  const symbol = new Intl.NumberFormat("en-AU", { style: "currency", currency, currencyDisplay: "narrowSymbol" })
+    .formatToParts(0)
+    .find((part) => part.type === "currency")?.value ?? "$";
+
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted">{symbol}</span>
       <input
         type="number"
         inputMode="decimal"
         step="0.01"
-        className={cn("input pl-7", className)}
+        className={cn("input pl-9", className)}
         value={Number.isFinite(value) ? value : 0}
         onFocus={(event) => {
           if (Number(event.currentTarget.value) === 0) event.currentTarget.select();

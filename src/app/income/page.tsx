@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Download, FileSpreadsheet, Pencil, Plus, Trash2, Wallet } from "lucide-react";
-import { db } from "@/lib/db";
+import { CalendarCheck, Download, FileSpreadsheet, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { db, nowIso, uid } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
@@ -15,7 +15,7 @@ import { formatDate, money, titleise } from "@/lib/format";
 import { exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
-import type { IncomeEntry } from "@/lib/types";
+import type { IncomeEntry, Property } from "@/lib/types";
 
 export default function IncomePage() {
   const toast = useToast();
@@ -27,6 +27,7 @@ export default function IncomePage() {
   const [fy, setFy] = React.useState<number | "all">(years[0] ?? "all");
   const [propertyId, setPropertyId] = React.useState("all");
   const [editing, setEditing] = React.useState<IncomeEntry | undefined>();
+  const [defaultPropertyId, setDefaultPropertyId] = React.useState<string | undefined>();
   const [open, setOpen] = React.useState(false);
 
   const rows = income
@@ -38,6 +39,19 @@ export default function IncomePage() {
   const fees = sum(rows.map((entry) => entry.managementFee));
   const arrears = rows.filter((entry) => entry.status === "arrears").length;
   const vacant = rows.filter((entry) => entry.status === "vacant").length;
+  const rentRun = properties
+    .filter((property) => !property.archived && property.annualRent > 0)
+    .map((property) => {
+      const period = currentRentPeriod(property.rentFrequency);
+      const existing = income.find(
+        (entry) =>
+          entry.propertyId === property.id &&
+          entry.category === "rent" &&
+          entry.periodStart === period.start &&
+          entry.periodEnd === period.end
+      );
+      return { property, period, entry: existing ?? rentEntry(property, period) };
+    });
 
   const remove = async (id: string) => {
     await db.income.delete(id);
@@ -64,6 +78,7 @@ export default function IncomePage() {
             <Button
               onClick={() => {
                 setEditing(undefined);
+                setDefaultPropertyId(undefined);
                 setOpen(true);
               }}
             >
@@ -79,6 +94,63 @@ export default function IncomePage() {
         <StatCard label="Net income" value={money(gross - fees)} />
         <StatCard label="Arrears / vacancy" value={`${arrears} / ${vacant}`} tone="warning" helper="Entries flagged" />
       </section>
+
+      {rentRun.length ? (
+        <Card>
+          <CardHeader title="Rent run" subtitle="Mark the current scheduled rent as paid, or edit it first." />
+          <CardBody className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {rentRun.map(({ property, period, entry }) => {
+              const paid = entry.status === "received" && income.some((item) => item.id === entry.id);
+              return (
+                <div key={property.id} className="rounded-2xl border border-border bg-bg/40 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{property.name}</p>
+                      <p className="text-xs text-muted">
+                        {titleise(property.rentFrequency)} · {formatDate(period.start)} to {formatDate(period.end)}
+                      </p>
+                    </div>
+                    <Badge tone={paid ? "positive" : "warning"}>{paid ? "Paid" : "Due"}</Badge>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted">Rent</p>
+                      <p className="font-semibold">{money(entry.amount, true, property.currency)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted">Fee</p>
+                      <p className="font-semibold text-muted">{money(entry.managementFee, true, property.currency)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={paid}
+                      onClick={async () => {
+                        await db.income.put({ ...entry, status: "received", updatedAt: nowIso() });
+                        toast("Rent marked paid");
+                      }}
+                    >
+                      <CalendarCheck size={14} /> Mark paid
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setEditing(entry);
+                        setDefaultPropertyId(property.id);
+                        setOpen(true);
+                      }}
+                    >
+                      Edit value
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </CardBody>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader
@@ -123,6 +195,7 @@ export default function IncomePage() {
                 <Button
                   onClick={() => {
                     setEditing(undefined);
+                    setDefaultPropertyId(undefined);
                     setOpen(true);
                   }}
                 >
@@ -179,6 +252,7 @@ export default function IncomePage() {
                             aria-label="Edit"
                             onClick={() => {
                               setEditing(entry);
+                              setDefaultPropertyId(entry.propertyId);
                               setOpen(true);
                             }}
                           >
@@ -198,7 +272,61 @@ export default function IncomePage() {
         </CardBody>
       </Card>
 
-      <IncomeForm open={open} onClose={() => setOpen(false)} entry={editing} />
+      <IncomeForm open={open} onClose={() => setOpen(false)} entry={editing} defaultPropertyId={defaultPropertyId} />
     </>
   );
+}
+
+function currentRentPeriod(frequency: Property["rentFrequency"]): { start: string; end: string } {
+  const today = new Date();
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (frequency === "monthly") {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    return { start: toIsoDate(start), end: toIsoDate(end) };
+  }
+
+  const day = date.getDay() || 7;
+  const weekStart = new Date(date);
+  weekStart.setDate(date.getDate() - day + 1);
+
+  if (frequency === "weekly") {
+    const end = new Date(weekStart);
+    end.setDate(weekStart.getDate() + 6);
+    return { start: toIsoDate(weekStart), end: toIsoDate(end) };
+  }
+
+  const anchor = new Date(date.getFullYear(), 0, 1);
+  const daysSinceAnchor = Math.floor((weekStart.getTime() - anchor.getTime()) / 86_400_000);
+  if (Math.floor(daysSinceAnchor / 7) % 2 !== 0) weekStart.setDate(weekStart.getDate() - 7);
+  const end = new Date(weekStart);
+  end.setDate(weekStart.getDate() + 13);
+  return { start: toIsoDate(weekStart), end: toIsoDate(end) };
+}
+
+function rentEntry(property: Property, period: { start: string; end: string }): IncomeEntry {
+  const amount = rentAmount(property);
+  return {
+    id: uid(),
+    propertyId: property.id,
+    date: period.end,
+    periodStart: period.start,
+    periodEnd: period.end,
+    category: "rent",
+    status: "pending",
+    amount,
+    managementFee: Math.round(amount * ((property.managementFeePercent ?? 0) / 100) * 100) / 100,
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  };
+}
+
+function rentAmount(property: Property): number {
+  const divisor = property.rentFrequency === "weekly" ? 52 : property.rentFrequency === "fortnightly" ? 26 : 12;
+  return Math.round((property.annualRent / divisor) * 100) / 100;
+}
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn, compactMoney, percent } from "@/lib/format";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import type { CurrencyCode } from "@/lib/types";
 
 export function StatCard({
   label,
@@ -58,11 +59,11 @@ export function StatCard({
   );
 }
 
-export function MiniStat({ label, value }: { label: string; value: number | string }) {
+export function MiniStat({ label, value, currency = "AUD" }: { label: string; value: number | string; currency?: CurrencyCode }) {
   return (
     <div className="rounded-xl border border-border bg-bg/50 px-3 py-2.5">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold">{typeof value === "number" ? compactMoney(value) : value}</p>
+      <p className="mt-0.5 text-sm font-semibold">{typeof value === "number" ? compactMoney(value, currency) : value}</p>
     </div>
   );
 }

@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-bg/80 px-3 py-2 backdrop-blur-xl sm:px-6">
+        <header className="no-print sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-bg/80 px-4 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-xl sm:px-6 sm:pt-2">
           <div className="flex items-center gap-2 lg:hidden">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-white">
               <Building2 size={18} />
@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 pb-32 pt-6 sm:px-6 lg:pb-12">
+        <main className="min-w-0 flex-1 px-5 pb-32 pt-7 sm:px-6 lg:pb-12">
           <div className="mx-auto w-full max-w-7xl space-y-6">{children}</div>
         </main>
       </div>

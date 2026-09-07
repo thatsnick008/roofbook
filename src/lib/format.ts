@@ -1,34 +1,35 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { CurrencyCode } from "./types";
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
-const currencyFormatter = new Intl.NumberFormat("en-AU", {
-  style: "currency",
-  currency: "AUD",
-  maximumFractionDigits: 0
-});
-
-const currencyPreciseFormatter = new Intl.NumberFormat("en-AU", {
-  style: "currency",
-  currency: "AUD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
-
-export function money(value: number, precise = false): string {
+export function money(value: number, precise = false, currency: CurrencyCode = "AUD"): string {
   if (!Number.isFinite(value)) return "—";
-  return precise ? currencyPreciseFormatter.format(value) : currencyFormatter.format(value);
+  return new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency,
+    currencyDisplay: "narrowSymbol",
+    minimumFractionDigits: precise ? 2 : 0,
+    maximumFractionDigits: precise ? 2 : 0
+  }).format(value);
 }
 
-export function compactMoney(value: number): string {
+function currencySymbol(currency: CurrencyCode): string {
+  return new Intl.NumberFormat("en-AU", { style: "currency", currency, currencyDisplay: "narrowSymbol" })
+    .formatToParts(0)
+    .find((part) => part.type === "currency")?.value ?? "$";
+}
+
+export function compactMoney(value: number, currency: CurrencyCode = "AUD"): string {
   if (!Number.isFinite(value)) return "—";
   const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${value < 0 ? "-" : ""}$${(abs / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `${value < 0 ? "-" : ""}$${(abs / 1_000).toFixed(1)}k`;
-  return money(value);
+  const prefix = `${value < 0 ? "-" : ""}${currencySymbol(currency)}`;
+  if (abs >= 1_000_000) return `${prefix}${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${prefix}${(abs / 1_000).toFixed(1)}k`;
+  return money(value, false, currency);
 }
 
 type MoneyPeriod = "week" | "fortnight" | "month" | "year";
@@ -40,13 +41,13 @@ const periodSuffix: Record<MoneyPeriod, string> = {
   year: "yr"
 };
 
-export function moneyPerPeriod(value: number, period: MoneyPeriod, precise = false): string {
-  const formatted = money(value, precise);
+export function moneyPerPeriod(value: number, period: MoneyPeriod, precise = false, currency: CurrencyCode = "AUD"): string {
+  const formatted = money(value, precise, currency);
   return formatted === "—" ? formatted : `${formatted}/${periodSuffix[period]}`;
 }
 
-export function compactMoneyPerPeriod(value: number, period: MoneyPeriod): string {
-  const formatted = compactMoney(value);
+export function compactMoneyPerPeriod(value: number, period: MoneyPeriod, currency: CurrencyCode = "AUD"): string {
+  const formatted = compactMoney(value, currency);
   return formatted === "—" ? formatted : `${formatted}/${periodSuffix[period]}`;
 }
 

@@ -1,16 +1,29 @@
 import type {
   ContactRole,
+  CurrencyCode,
   ExpenseCategory,
   IncomeCategory,
   IncomeStatus,
   PropertyStatus,
   PropertyType,
+  RentFrequency,
   Recurrence,
   ReminderCategory
 } from "./types";
 
 export const propertyTypes: PropertyType[] = ["house", "townhouse", "unit", "duplex", "land", "commercial"];
 export const propertyStatuses: PropertyStatus[] = ["owned", "under-contract", "listed", "sold"];
+export const currencies: { code: CurrencyCode; label: string }[] = [
+  { code: "AUD", label: "A$ Australian dollar" },
+  { code: "USD", label: "$ US dollar" },
+  { code: "INR", label: "₹ Indian rupee" },
+  { code: "GBP", label: "£ British pound" },
+  { code: "EUR", label: "€ Euro" },
+  { code: "NZD", label: "NZ$ New Zealand dollar" },
+  { code: "SGD", label: "S$ Singapore dollar" },
+  { code: "CAD", label: "C$ Canadian dollar" }
+];
+export const rentFrequencies: RentFrequency[] = ["weekly", "fortnightly", "monthly"];
 export const incomeCategories: IncomeCategory[] = ["rent", "arrears-recovery", "insurance-payout", "bond-claim", "other"];
 export const incomeStatuses: IncomeStatus[] = ["received", "pending", "arrears", "vacant"];
 

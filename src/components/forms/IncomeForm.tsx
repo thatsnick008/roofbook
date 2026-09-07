@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useProperties } from "@/hooks/useData";
 import { incomeCategories, incomeStatuses } from "@/lib/options";
 import { titleise, todayIso, money } from "@/lib/format";
-import type { IncomeEntry } from "@/lib/types";
+import type { IncomeEntry, Property } from "@/lib/types";
 
 export function IncomeForm({
   open,
@@ -27,11 +27,12 @@ export function IncomeForm({
   const [form, setForm] = React.useState<IncomeEntry>(() => blank(defaultPropertyId));
   const [feeMode, setFeeMode] = React.useState<"percent" | "amount">("percent");
   const [feePercent, setFeePercent] = React.useState(5.5);
+  const selectedProperty = properties.find((property) => property.id === form.propertyId);
 
   React.useEffect(() => {
     if (!open) return;
     const property = properties.find((item) => item.id === (defaultPropertyId ?? properties[0]?.id));
-    setForm(entry ?? blank(defaultPropertyId ?? properties[0]?.id));
+    setForm(entry ?? blank(defaultPropertyId ?? properties[0]?.id, property));
     setFeeMode("percent");
     setFeePercent(
       entry && entry.amount > 0
@@ -55,6 +56,10 @@ export function IncomeForm({
     if (feeMode === "percent") {
       const property = properties.find((item) => item.id === propertyId);
       setFeePercent(property?.managementFeePercent ?? 5.5);
+      if (!entry && property?.annualRent) {
+        const amount = rentAmount(property);
+        patch({ amount, managementFee: Math.round(amount * ((property.managementFeePercent ?? 0) / 100) * 100) / 100 });
+      }
     }
   };
 
@@ -73,7 +78,7 @@ export function IncomeForm({
       open={open}
       onClose={onClose}
       title={entry ? "Edit income" : "Record income"}
-      description="Fortnightly rent, arrears recovery or other property income."
+      description="Rent payments, arrears recovery or other property income."
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
@@ -124,7 +129,7 @@ export function IncomeForm({
           />
         </Field>
         <Field label="Amount">
-          <MoneyInput value={form.amount} onValueChange={(value) => patch({ amount: value })} />
+          <MoneyInput value={form.amount} currency={selectedProperty?.currency} onValueChange={(value) => patch({ amount: value })} />
         </Field>
         <Field label="Management fee">
           <div className="space-y-2">
@@ -158,10 +163,10 @@ export function IncomeForm({
                   onChange={(event) => setFeePercent(Number(event.target.value))}
                   className="w-24"
                 />
-                <span className="text-sm text-muted">= {money(form.managementFee, true)}</span>
+                <span className="text-sm text-muted">= {money(form.managementFee, true, selectedProperty?.currency)}</span>
               </div>
             ) : (
-              <MoneyInput value={form.managementFee} onValueChange={(value) => patch({ managementFee: value })} />
+              <MoneyInput value={form.managementFee} currency={selectedProperty?.currency} onValueChange={(value) => patch({ managementFee: value })} />
             )}
           </div>
         </Field>
@@ -185,15 +190,22 @@ export function IncomeForm({
   );
 }
 
-function blank(propertyId?: string): IncomeEntry {
+function rentAmount(property?: Property): number {
+  if (!property?.annualRent) return 0;
+  const divisor = property.rentFrequency === "weekly" ? 52 : property.rentFrequency === "fortnightly" ? 26 : 12;
+  return Math.round((property.annualRent / divisor) * 100) / 100;
+}
+
+function blank(propertyId?: string, property?: Property): IncomeEntry {
+  const amount = rentAmount(property);
   return {
     id: uid(),
     propertyId: propertyId ?? "",
     date: todayIso(),
     category: "rent",
     status: "received",
-    amount: 0,
-    managementFee: 0,
+    amount,
+    managementFee: property ? Math.round(amount * ((property.managementFeePercent ?? 0) / 100) * 100) / 100 : 0,
     createdAt: nowIso()
   };
 }

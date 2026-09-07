@@ -3,6 +3,8 @@ export type ID = string;
 export type PropertyStatus = "owned" | "under-contract" | "listed" | "sold";
 export type PropertyType = "house" | "townhouse" | "unit" | "duplex" | "land" | "commercial";
 export type PropertyTaxTreatment = "offset" | "retain";
+export type CurrencyCode = "AUD" | "USD" | "INR" | "GBP" | "EUR" | "NZD" | "SGD" | "CAD";
+export type RentFrequency = "weekly" | "fortnightly" | "monthly";
 
 export interface Property {
   id: ID;
@@ -21,6 +23,9 @@ export interface Property {
   currentValuation: number;
   annualDepreciation: number;
   managementFeePercent: number;
+  annualRent: number;
+  rentFrequency: RentFrequency;
+  currency: CurrencyCode;
   valuationDate?: string;
   accent: string;
   taxTreatment: PropertyTaxTreatment;

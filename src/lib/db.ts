@@ -152,6 +152,28 @@ export class PropertyCommandCentreDB extends Dexie {
           });
         });
 
+      this.version(6)
+        .stores({
+          properties: "id, name, suburb, status, archived, createdAt, updatedAt",
+          purchases: "id, propertyId, purchaseDate, updatedAt",
+          loans: "id, propertyId, bank, updatedAt",
+          income: "id, propertyId, date, category, status, updatedAt",
+          expenses: "id, propertyId, date, category, taxDeductible, updatedAt",
+          contacts: "id, propertyId, role, renewalDate, updatedAt",
+          reminders: "id, propertyId, dueDate, category, completed, updatedAt",
+          documents: "id, propertyId, category, uploadedAt, updatedAt",
+          settings: "id",
+          tombstones: "id, table, deletedAt",
+          syncMeta: "id"
+        })
+        .upgrade(async (transaction) => {
+          await transaction.table("properties").toCollection().modify((row: Record<string, unknown>) => {
+            row.currency ??= "AUD";
+            row.annualRent ??= 0;
+            row.rentFrequency ??= "monthly";
+          });
+        });
+
     this.registerSyncHooks();
   }
 

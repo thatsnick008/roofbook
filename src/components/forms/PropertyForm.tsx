@@ -6,10 +6,10 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
-import { accentPalette, australianStates, propertyStatuses, propertyTypes } from "@/lib/options";
+import { accentPalette, australianStates, currencies, propertyStatuses, propertyTypes, rentFrequencies } from "@/lib/options";
 import { titleise, todayIso, money, cn } from "@/lib/format";
 import { totalCapitalRequired } from "@/lib/calc";
-import type { Loan, Property, PurchaseDetails, PropertyTaxTreatment } from "@/lib/types";
+import type { CurrencyCode, Loan, Property, PurchaseDetails, PropertyTaxTreatment, RentFrequency } from "@/lib/types";
 
 const emptyProperty = (): Property => ({
   id: uid(),
@@ -28,6 +28,9 @@ const emptyProperty = (): Property => ({
   currentValuation: 0,
   annualDepreciation: 0,
   managementFeePercent: 5.5,
+  annualRent: 0,
+  rentFrequency: "monthly",
+  currency: "AUD",
   accent: accentPalette[0],
   taxTreatment: "offset",
   archived: false,
@@ -255,8 +258,18 @@ export function PropertyForm({
           <Field label="Current valuation">
             <MoneyInput
               value={property.currentValuation}
+              currency={property.currency}
               onValueChange={(value) => patchProperty({ currentValuation: value })}
             />
+          </Field>
+          <Field label="Currency">
+            <Select value={property.currency} onChange={(event) => patchProperty({ currency: event.target.value as CurrencyCode })}>
+              {currencies.map((currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.label}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Valuation date">
             <Input
@@ -268,8 +281,25 @@ export function PropertyForm({
           <Field label="Yearly depreciation" hint="Annual non-cash depreciation used in net cashflow.">
             <MoneyInput
               value={property.annualDepreciation}
+              currency={property.currency}
               onValueChange={(value) => patchProperty({ annualDepreciation: value })}
             />
+          </Field>
+          <Field label="Annual rent" hint="Used to create weekly, fortnightly or monthly rent records.">
+            <MoneyInput
+              value={property.annualRent}
+              currency={property.currency}
+              onValueChange={(value) => patchProperty({ annualRent: value })}
+            />
+          </Field>
+          <Field label="Rent frequency">
+            <Select value={property.rentFrequency} onChange={(event) => patchProperty({ rentFrequency: event.target.value as RentFrequency })}>
+              {rentFrequencies.map((frequency) => (
+                <option key={frequency} value={frequency}>
+                  {titleise(frequency)}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Management fee %" hint="Default rate suggested when recording future income.">
             <Input
@@ -333,65 +363,71 @@ export function PropertyForm({
             />
           </Field>
           <Field label="Valuation">
-            <MoneyInput value={purchase.valuation} onValueChange={(value) => patchPurchase({ valuation: value })} />
+            <MoneyInput value={purchase.valuation} currency={property.currency} onValueChange={(value) => patchPurchase({ valuation: value })} />
           </Field>
           <Field label="Purchase price">
             <MoneyInput
               value={purchase.purchasePrice}
+              currency={property.currency}
               onValueChange={(value) => patchPurchase({ purchasePrice: value })}
             />
           </Field>
           <Field label="Loan before LMI">
             <MoneyInput
               value={purchase.loanBeforeLmi}
+              currency={property.currency}
               onValueChange={(value) => patchPurchase({ loanBeforeLmi: value, loanAfterLmi: value + purchase.lmi })}
             />
           </Field>
           <Field label="LMI">
             <MoneyInput
               value={purchase.lmi}
+              currency={property.currency}
               onValueChange={(value) => patchPurchase({ lmi: value, loanAfterLmi: purchase.loanBeforeLmi + value })}
             />
           </Field>
           <Field label="Loan after LMI">
-            <MoneyInput value={purchase.loanAfterLmi} onValueChange={(value) => patchPurchase({ loanAfterLmi: value })} />
+            <MoneyInput value={purchase.loanAfterLmi} currency={property.currency} onValueChange={(value) => patchPurchase({ loanAfterLmi: value })} />
           </Field>
           <Field label="Deposit">
-            <MoneyInput value={purchase.deposit} onValueChange={(value) => patchPurchase({ deposit: value })} />
+            <MoneyInput value={purchase.deposit} currency={property.currency} onValueChange={(value) => patchPurchase({ deposit: value })} />
           </Field>
           <Field label="Stamp duty">
-            <MoneyInput value={purchase.stampDuty} onValueChange={(value) => patchPurchase({ stampDuty: value })} />
+            <MoneyInput value={purchase.stampDuty} currency={property.currency} onValueChange={(value) => patchPurchase({ stampDuty: value })} />
           </Field>
           <Field label="Legal fees">
-            <MoneyInput value={purchase.legalFees} onValueChange={(value) => patchPurchase({ legalFees: value })} />
+            <MoneyInput value={purchase.legalFees} currency={property.currency} onValueChange={(value) => patchPurchase({ legalFees: value })} />
           </Field>
           <Field label="Renovations">
-            <MoneyInput value={purchase.renovations} onValueChange={(value) => patchPurchase({ renovations: value })} />
+            <MoneyInput value={purchase.renovations} currency={property.currency} onValueChange={(value) => patchPurchase({ renovations: value })} />
           </Field>
           <Field label="Settlement fees">
             <MoneyInput
               value={purchase.settlementFees}
+              currency={property.currency}
               onValueChange={(value) => patchPurchase({ settlementFees: value })}
             />
           </Field>
           <Field label="Building & pest">
             <MoneyInput
               value={purchase.buildingAndPest}
+              currency={property.currency}
               onValueChange={(value) => patchPurchase({ buildingAndPest: value })}
             />
           </Field>
           <Field label="Registration fees">
             <MoneyInput
               value={purchase.registrationFees}
+              currency={property.currency}
               onValueChange={(value) => patchPurchase({ registrationFees: value })}
             />
           </Field>
           <Field label="Other costs">
-            <MoneyInput value={purchase.otherCosts} onValueChange={(value) => patchPurchase({ otherCosts: value })} />
+            <MoneyInput value={purchase.otherCosts} currency={property.currency} onValueChange={(value) => patchPurchase({ otherCosts: value })} />
           </Field>
           <div className="flex items-center justify-between rounded-2xl border border-brand/30 bg-brand/10 px-4 py-3 sm:col-span-2">
             <span className="text-sm font-medium">Total capital required</span>
-            <span className="text-lg font-bold">{money(totalCapitalRequired(purchase, loan))}</span>
+            <span className="text-lg font-bold">{money(totalCapitalRequired(purchase, loan), false, property.currency)}</span>
           </div>
         </div>
       ) : null}
@@ -405,10 +441,10 @@ export function PropertyForm({
             <Input value={loan.accountName} onChange={(event) => patchLoan({ accountName: event.target.value })} />
           </Field>
           <Field label="Loan balance">
-            <MoneyInput value={loan.loanBalance} onValueChange={(value) => patchLoan({ loanBalance: value })} />
+            <MoneyInput value={loan.loanBalance} currency={property.currency} onValueChange={(value) => patchLoan({ loanBalance: value })} />
           </Field>
           <Field label="Offset balance">
-            <MoneyInput value={loan.offsetBalance} onValueChange={(value) => patchLoan({ offsetBalance: value })} />
+            <MoneyInput value={loan.offsetBalance} currency={property.currency} onValueChange={(value) => patchLoan({ offsetBalance: value })} />
           </Field>
           <Field label="Interest rate %">
             <Input

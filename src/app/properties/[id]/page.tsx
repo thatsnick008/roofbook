@@ -124,9 +124,9 @@ export default function PropertyDetailPage() {
       {tab === "Overview" ? (
         <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Valuation" value={money(metric.valuation)} helper={formatDate(property.valuationDate)} />
-            <StatCard label="Equity" value={money(metric.equity)} tone="positive" helper={percent(metric.lvr, 1) + " LVR"} />
-            <StatCard label="Net cashflow / year" value={moneyPerPeriod(metric.cashflow, "year")} tone={metric.cashflow >= 0 ? "positive" : "negative"} />
+            <StatCard label="Valuation" value={money(metric.valuation, false, property.currency)} helper={formatDate(property.valuationDate)} />
+            <StatCard label="Equity" value={money(metric.equity, false, property.currency)} tone="positive" helper={percent(metric.lvr, 1) + " LVR"} />
+            <StatCard label="Net cashflow / year" value={moneyPerPeriod(metric.cashflow, "year", false, property.currency)} tone={metric.cashflow >= 0 ? "positive" : "negative"} />
             <StatCard label="Net yield" value={percent(metric.netYield, 2)} helper={`Gross ${percent(metric.grossYield, 2)}`} />
           </section>
 
@@ -140,14 +140,14 @@ export default function PropertyDetailPage() {
             <Card>
               <CardHeader title="Snapshot" />
               <CardBody className="grid grid-cols-2 gap-3">
-                <MiniStat label="Purchase price" value={purchase?.purchasePrice ?? 0} />
-                <MiniStat label="Capital in" value={metric.capitalRequired} />
-                <MiniStat label="Growth" value={metric.capitalGrowth} />
+                <MiniStat label="Purchase price" value={purchase?.purchasePrice ?? 0} currency={property.currency} />
+                <MiniStat label="Capital in" value={metric.capitalRequired} currency={property.currency} />
+                <MiniStat label="Growth" value={metric.capitalGrowth} currency={property.currency} />
                 <MiniStat label="Cash on cash" value={percent(metric.cashOnCash, 1)} />
-                <MiniStat label="Loan" value={metric.debt} />
-                <MiniStat label="Offset" value={metric.offset} />
-                <MiniStat label="Income" value={metric.income} />
-                <MiniStat label="Expenses" value={metric.expenses} />
+                <MiniStat label="Loan" value={metric.debt} currency={property.currency} />
+                <MiniStat label="Offset" value={metric.offset} currency={property.currency} />
+                <MiniStat label="Income" value={metric.income} currency={property.currency} />
+                <MiniStat label="Expenses" value={metric.expenses} currency={property.currency} />
               </CardBody>
             </Card>
           </section>
@@ -210,12 +210,12 @@ export default function PropertyDetailPage() {
                 ).map(([label, value]) => (
                   <div key={label} className="rounded-xl border border-border bg-bg/40 px-4 py-3">
                     <dt className="text-[11px] uppercase tracking-wide text-muted">{label}</dt>
-                    <dd className="mt-0.5 text-base font-semibold">{money(value)}</dd>
+                    <dd className="mt-0.5 text-base font-semibold">{money(value, false, property.currency)}</dd>
                   </div>
                 ))}
                 <div className="rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 sm:col-span-2 lg:col-span-3">
                   <dt className="text-[11px] uppercase tracking-wide text-brand">Total capital required</dt>
-                  <dd className="mt-0.5 text-2xl font-bold">{money(totalCapitalRequired(purchase, loan))}</dd>
+                  <dd className="mt-0.5 text-2xl font-bold">{money(totalCapitalRequired(purchase, loan), false, property.currency)}</dd>
                 </div>
               </dl>
             ) : (
@@ -230,11 +230,11 @@ export default function PropertyDetailPage() {
           <Card>
             <CardHeader title="Loan" subtitle={loan ? `${loan.bank} · ${loan.accountName}` : "Not configured"} />
             <CardBody className="grid grid-cols-2 gap-3">
-              <MiniStat label="Balance" value={loan?.loanBalance ?? 0} />
-              <MiniStat label="Offset" value={loan?.offsetBalance ?? 0} />
-              <MiniStat label="Effective debt" value={Math.max((loan?.loanBalance ?? 0) - (loan?.offsetBalance ?? 0), 0)} />
+              <MiniStat label="Balance" value={loan?.loanBalance ?? 0} currency={property.currency} />
+              <MiniStat label="Offset" value={loan?.offsetBalance ?? 0} currency={property.currency} />
+              <MiniStat label="Effective debt" value={Math.max((loan?.loanBalance ?? 0) - (loan?.offsetBalance ?? 0), 0)} currency={property.currency} />
               <MiniStat label="Rate" value={percent(loan?.interestRate ?? 0)} />
-              <MiniStat label="Repayment" value={monthlyRepayment(loan)} />
+              <MiniStat label="Repayment" value={monthlyRepayment(loan)} currency={property.currency} />
               <MiniStat label="Type" value={titleise(loan?.repaymentType ?? "—")} />
             </CardBody>
           </Card>
@@ -243,16 +243,16 @@ export default function PropertyDetailPage() {
             <CardBody className="space-y-3">
               <div className="flex items-center justify-between rounded-xl border border-border bg-bg/40 px-4 py-3">
                 <span className="text-sm text-muted">Forecast interest</span>
-                <span className="text-lg font-bold text-negative">{money(annualInterestForecast(loan))}</span>
+                <span className="text-lg font-bold text-negative">{money(annualInterestForecast(loan), false, property.currency)}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-positive/30 bg-positive/10 px-4 py-3">
                 <span className="text-sm text-muted">Offset saving</span>
-                <span className="text-lg font-bold text-positive">{money(offsetSavingsPerYear(loan))}</span>
+                <span className="text-lg font-bold text-positive">{money(offsetSavingsPerYear(loan), false, property.currency)}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-border bg-bg/40 px-4 py-3">
                 <span className="text-sm text-muted">Interest paid (recorded)</span>
                 <span className="text-lg font-bold">
-                  {money(expenses.filter((entry) => entry.category === "interest").reduce((t, e) => t + e.amount, 0))}
+                  {money(expenses.filter((entry) => entry.category === "interest").reduce((t, e) => t + e.amount, 0), false, property.currency)}
                 </span>
               </div>
             </CardBody>
@@ -262,7 +262,7 @@ export default function PropertyDetailPage() {
 
       {tab === "Income" ? (
         <Card>
-          <CardHeader title="Income ledger" subtitle={`${income.length} entries · ${money(metric.income)}`} />
+          <CardHeader title="Income ledger" subtitle={`${income.length} entries · ${money(metric.income, false, property.currency)}`} />
           <CardBody className="p-0">
             <div className="table-wrap border-0">
               <table className="data-table">
@@ -289,9 +289,9 @@ export default function PropertyDetailPage() {
                             {titleise(entry.status)}
                           </Badge>
                         </td>
-                        <td className="text-right font-medium">{money(entry.amount, true)}</td>
-                        <td className="text-right text-muted">{money(entry.managementFee, true)}</td>
-                        <td className="text-right font-semibold">{money(entry.amount - entry.managementFee, true)}</td>
+                        <td className="text-right font-medium">{money(entry.amount, true, property.currency)}</td>
+                        <td className="text-right text-muted">{money(entry.managementFee, true, property.currency)}</td>
+                        <td className="text-right font-semibold">{money(entry.amount - entry.managementFee, true, property.currency)}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -303,7 +303,7 @@ export default function PropertyDetailPage() {
 
       {tab === "Expenses" ? (
         <Card>
-          <CardHeader title="Expense ledger" subtitle={`${expenses.length} entries · ${money(metric.expenses)}`} />
+          <CardHeader title="Expense ledger" subtitle={`${expenses.length} entries · ${money(metric.expenses, false, property.currency)}`} />
           <CardBody className="p-0">
             <div className="table-wrap border-0">
               <table className="data-table">
@@ -326,8 +326,8 @@ export default function PropertyDetailPage() {
                         <td>{formatDate(entry.date)}</td>
                         <td>{titleise(entry.category)}</td>
                         <td className="text-muted">{entry.supplier ?? "—"}</td>
-                        <td className="text-right font-medium">{money(entry.amount, true)}</td>
-                        <td className="text-right text-muted">{money(entry.gst, true)}</td>
+                        <td className="text-right font-medium">{money(entry.amount, true, property.currency)}</td>
+                        <td className="text-right text-muted">{money(entry.gst, true, property.currency)}</td>
                         <td>
                           <Badge tone={entry.taxDeductible ? "positive" : "neutral"}>
                             {entry.taxDeductible ? "Yes" : "No"}

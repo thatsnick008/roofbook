@@ -16,6 +16,7 @@ import { EXPORTS_ENABLED } from "@/lib/features";
 import { seedDemoData } from "@/lib/seed";
 import { formatDate, cn } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
+import { APP_VERSION } from "@/lib/version";
 
 export default function SettingsPage() {
   const toast = useToast();
@@ -68,6 +69,26 @@ export default function SettingsPage() {
     });
     const result = await response.json().catch(() => ({ error: "Unexpected response" }));
     toast(response.ok ? "Test email sent" : result.error ?? "Could not send email", response.ok ? "success" : "error");
+  };
+
+  const updateApp = async () => {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.update();
+          registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+          registration.active?.postMessage({ type: "CLEAR_RUNTIME_CACHES" });
+        }
+      }
+    } finally {
+      window.location.reload();
+    }
   };
 
   return (
@@ -168,6 +189,19 @@ export default function SettingsPage() {
                 {label}
               </button>
             ))}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader title="App update" subtitle={`Current version ${APP_VERSION}`} action={<RefreshCw size={18} className="text-muted" />} />
+          <CardBody className="space-y-3">
+            <p className="text-sm text-muted">
+              Refresh the installed app shell and load the latest production deployment. Portfolio records stored on this
+              device are not cleared.
+            </p>
+            <Button variant="secondary" onClick={updateApp}>
+              <RefreshCw size={16} /> Update to latest version
+            </Button>
           </CardBody>
         </Card>
 

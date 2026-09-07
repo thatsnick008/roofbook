@@ -10,7 +10,48 @@ export function Providers({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    let refreshing = false;
+    let checkForUpdate: (() => void) | undefined;
+
+    const activateWaitingWorker = (worker?: ServiceWorker | null) => {
+      worker?.postMessage({ type: "SKIP_WAITING" });
+    };
+
+    const onControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then((registration) => {
+        registration.update().catch(() => undefined);
+        activateWaitingWorker(registration.waiting);
+
+        registration.addEventListener("updatefound", () => {
+          const worker = registration.installing;
+          worker?.addEventListener("statechange", () => {
+            if (worker.state === "installed" && navigator.serviceWorker.controller) activateWaitingWorker(worker);
+          });
+        });
+
+        checkForUpdate = () => {
+          if (document.visibilityState === "visible") registration.update().catch(() => undefined);
+        };
+        document.addEventListener("visibilitychange", checkForUpdate);
+        window.addEventListener("focus", checkForUpdate);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      if (!checkForUpdate) return;
+      document.removeEventListener("visibilitychange", checkForUpdate);
+      window.removeEventListener("focus", checkForUpdate);
+    };
   }, []);
 
   return (

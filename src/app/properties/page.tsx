@@ -126,15 +126,15 @@ export default function PropertiesPage() {
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <dt className="text-[11px] uppercase tracking-wide text-muted">Valuation</dt>
-                    <dd className="font-semibold">{money(metric.valuation)}</dd>
+                    <dd className="font-semibold">{money(metric.valuation, false, metric.property.currency)}</dd>
                   </div>
                   <div>
                     <dt className="text-[11px] uppercase tracking-wide text-muted">Debt</dt>
-                    <dd className="font-semibold">{compactMoney(metric.debt)}</dd>
+                    <dd className="font-semibold">{compactMoney(metric.debt, metric.property.currency)}</dd>
                   </div>
                   <div>
                     <dt className="text-[11px] uppercase tracking-wide text-muted">Equity</dt>
-                    <dd className="font-semibold text-positive">{compactMoney(metric.equity)}</dd>
+                    <dd className="font-semibold text-positive">{compactMoney(metric.equity, metric.property.currency)}</dd>
                   </div>
                   <div>
                     <dt className="text-[11px] uppercase tracking-wide text-muted">Net yield</dt>

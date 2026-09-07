@@ -1,5 +1,12 @@
-const CACHE = "pcc-shell-v1";
+const CACHE = "pcc-shell-v3";
 const SHELL = ["/", "/properties", "/income", "/expenses", "/reports", "/manifest.webmanifest"];
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data?.type === "CLEAR_RUNTIME_CACHES") {
+    event.waitUntil(caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))));
+  }
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -19,16 +26,14 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
   if (request.url.includes("/api/")) return;
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => cached || caches.match("/"));
-      return cached || network;
-    })
-  );
+  event.respondWith(fetchAndCache(request).catch(() => caches.match(request).then((cached) => cached || caches.match("/"))));
 });
+
+async function fetchAndCache(request) {
+  const response = await fetch(request);
+  if (response.ok) {
+    const cache = await caches.open(CACHE);
+    await cache.put(request, response.clone());
+  }
+  return response;
+}

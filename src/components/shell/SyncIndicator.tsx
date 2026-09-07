@@ -61,7 +61,7 @@ function syncFailureTitle(error?: string): string {
     return `${reason} Check your internet connection, then run Sync now.`;
   }
 
-  return `${reason} Check your connection, make sure you are signed in, then run Sync now. If it keeps failing, open Settings and push all local data to cloud.`;
+  return `${reason} Check your connection, make sure you are signed in, then choose server values or this device when prompted.`;
 }
 
 function relative(iso: string): string {

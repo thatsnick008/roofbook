@@ -3,7 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSettings } from "@/lib/db";
 import { propertyMetrics, portfolioTotals, type PropertyMetrics } from "@/lib/calc";
-import type { AppSettings, PortfolioTotals } from "@/lib/types";
+import type { AppSettings, CurrencyCode, PortfolioTotals } from "@/lib/types";
 
 export function useProperties() {
   return useLiveQuery(() => db.properties.toArray(), [], undefined);
@@ -53,6 +53,7 @@ export interface PortfolioSnapshot {
   loading: boolean;
   metrics: PropertyMetrics[];
   totals: PortfolioTotals;
+  totalsByCurrency: (PortfolioTotals & { currency: CurrencyCode })[];
 }
 
 export function usePortfolio(): PortfolioSnapshot {
@@ -78,5 +79,9 @@ export function usePortfolio(): PortfolioSnapshot {
           )
       : [];
 
-  return { loading: !ready, metrics, totals: portfolioTotals(metrics) };
+  const totalsByCurrency = [...new Set(metrics.map((metric) => metric.property.currency ?? "AUD"))]
+    .sort()
+    .map((currency) => ({ currency, ...portfolioTotals(metrics.filter((metric) => (metric.property.currency ?? "AUD") === currency)) }));
+
+  return { loading: !ready, metrics, totals: portfolioTotals(metrics), totalsByCurrency };
 }
