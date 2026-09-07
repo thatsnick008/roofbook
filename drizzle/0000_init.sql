@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS "properties" (
   "land_size" double precision NOT NULL DEFAULT 0,
   "current_valuation" double precision NOT NULL DEFAULT 0,
   "annual_depreciation" double precision NOT NULL DEFAULT 0,
+  "management_fee_percent" double precision NOT NULL DEFAULT 5.5,
   "valuation_date" text,
   "accent" text NOT NULL DEFAULT '#2563eb',
   "tax_treatment" text NOT NULL DEFAULT 'offset',

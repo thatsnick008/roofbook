@@ -23,6 +23,7 @@ const propertySchema = z.object({
   landSize: money,
   currentValuation: money,
   annualDepreciation: money,
+  managementFeePercent: z.number().finite().min(0).max(100).default(5.5),
   valuationDate: text(40).optional().nullable(),
   accent: text(32).default("#2563eb"),
   taxTreatment: z.enum(["offset", "retain"]).default("offset"),

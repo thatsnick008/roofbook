@@ -20,6 +20,7 @@ export interface Property {
   landSize: number;
   currentValuation: number;
   annualDepreciation: number;
+  managementFeePercent: number;
   valuationDate?: string;
   accent: string;
   taxTreatment: PropertyTaxTreatment;

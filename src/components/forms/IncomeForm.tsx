@@ -8,7 +8,7 @@ import { Field, Input, MoneyInput, Select, Textarea } from "@/components/ui/Fiel
 import { useToast } from "@/components/ui/Toast";
 import { useProperties } from "@/hooks/useData";
 import { incomeCategories, incomeStatuses } from "@/lib/options";
-import { titleise, todayIso } from "@/lib/format";
+import { titleise, todayIso, money } from "@/lib/format";
 import type { IncomeEntry } from "@/lib/types";
 
 export function IncomeForm({
@@ -25,14 +25,38 @@ export function IncomeForm({
   const toast = useToast();
   const properties = useProperties() ?? [];
   const [form, setForm] = React.useState<IncomeEntry>(() => blank(defaultPropertyId));
+  const [feeMode, setFeeMode] = React.useState<"percent" | "amount">("percent");
+  const [feePercent, setFeePercent] = React.useState(5.5);
 
   React.useEffect(() => {
     if (!open) return;
+    const property = properties.find((item) => item.id === (defaultPropertyId ?? properties[0]?.id));
     setForm(entry ?? blank(defaultPropertyId ?? properties[0]?.id));
+    setFeeMode("percent");
+    setFeePercent(
+      entry && entry.amount > 0
+        ? Math.round((entry.managementFee / entry.amount) * 1000) / 10
+        : property?.managementFeePercent ?? 5.5
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry, defaultPropertyId]);
 
   const patch = (value: Partial<IncomeEntry>) => setForm((current) => ({ ...current, ...value }));
+
+  React.useEffect(() => {
+    if (feeMode !== "percent") return;
+    const fee = Math.round(form.amount * (feePercent / 100) * 100) / 100;
+    if (fee !== form.managementFee) patch({ managementFee: fee });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feeMode, feePercent, form.amount]);
+
+  const selectProperty = (propertyId: string) => {
+    patch({ propertyId });
+    if (feeMode === "percent") {
+      const property = properties.find((item) => item.id === propertyId);
+      setFeePercent(property?.managementFeePercent ?? 5.5);
+    }
+  };
 
   const save = async () => {
     if (!form.propertyId) {
@@ -61,7 +85,7 @@ export function IncomeForm({
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Property" className="sm:col-span-2">
-          <Select value={form.propertyId} onChange={(event) => patch({ propertyId: event.target.value })}>
+          <Select value={form.propertyId} onChange={(event) => selectProperty(event.target.value)}>
             <option value="">Select property…</option>
             {properties.map((property) => (
               <option key={property.id} value={property.id}>
@@ -103,7 +127,43 @@ export function IncomeForm({
           <MoneyInput value={form.amount} onValueChange={(value) => patch({ amount: value })} />
         </Field>
         <Field label="Management fee">
-          <MoneyInput value={form.managementFee} onValueChange={(value) => patch({ managementFee: value })} />
+          <div className="space-y-2">
+            <div className="flex gap-1 rounded-xl border border-border bg-bg/50 p-1">
+              {(
+                [
+                  ["percent", "%"],
+                  ["amount", "$"]
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setFeeMode(mode)}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                    feeMode === mode ? "bg-brand text-white" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {feeMode === "percent" ? (
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={feePercent}
+                  onChange={(event) => setFeePercent(Number(event.target.value))}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted">= {money(form.managementFee, true)}</span>
+              </div>
+            ) : (
+              <MoneyInput value={form.managementFee} onValueChange={(value) => patch({ managementFee: value })} />
+            )}
+          </div>
         </Field>
         <Field label="Status" className="sm:col-span-2">
           <Select

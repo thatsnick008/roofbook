@@ -40,6 +40,7 @@ export const properties = pgTable(
     landSize: doublePrecision("land_size").notNull().default(0),
     currentValuation: doublePrecision("current_valuation").notNull().default(0),
     annualDepreciation: doublePrecision("annual_depreciation").notNull().default(0),
+    managementFeePercent: doublePrecision("management_fee_percent").notNull().default(5.5),
     valuationDate: text("valuation_date"),
     accent: text("accent").notNull().default("#2563eb"),
     taxTreatment: text("tax_treatment").notNull().default("offset"),
@@ -220,6 +221,23 @@ export const userSettings = pgTable("user_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+/** Snapshot of a row taken before it's overwritten or deleted, capped at 5 per record so history is never lost. */
+export const recordRevisions = pgTable(
+  "record_revisions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    tableName: text("table_name").notNull(),
+    recordId: text("record_id").notNull(),
+    version: integer("version").notNull(),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    lookupIdx: index("record_revisions_lookup_idx").on(table.userId, table.tableName, table.recordId, table.version)
+  })
+);
+
 export const schema = {
   properties,
   purchases,
@@ -231,5 +249,6 @@ export const schema = {
   documents,
   userSettings,
   users,
-  passwordResetTokens
+  passwordResetTokens,
+  recordRevisions
 };

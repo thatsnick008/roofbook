@@ -27,6 +27,7 @@ const emptyProperty = (): Property => ({
   landSize: 400,
   currentValuation: 0,
   annualDepreciation: 0,
+  managementFeePercent: 5.5,
   accent: accentPalette[0],
   taxTreatment: "offset",
   archived: false,
@@ -268,6 +269,16 @@ export function PropertyForm({
             <MoneyInput
               value={property.annualDepreciation}
               onValueChange={(value) => patchProperty({ annualDepreciation: value })}
+            />
+          </Field>
+          <Field label="Management fee %" hint="Default rate suggested when recording future income.">
+            <Input
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={property.managementFeePercent}
+              onChange={(event) => patchProperty({ managementFeePercent: Number(event.target.value) })}
             />
           </Field>
           <Field

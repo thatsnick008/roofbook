@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, inArray } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/server/db/client";
 import { requireUserId } from "@/server/session";
-import { userSettings } from "@/server/db/schema";
+import { recordRevisions, userSettings } from "@/server/db/schema";
 import { registry, registryKeys, syncRequestSchema, type RegistryKey } from "@/server/sync/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** Every overwritten or deleted row is snapshotted first, capped at this many versions per record. */
+const MAX_REVISIONS = 5;
 
 type Row = Record<string, any>;
 
@@ -61,16 +64,18 @@ async function syncChanges(parsed: any, userId: string) {
 
   for (const key of registryKeys) {
     const incoming = changes[key] as Row[] | undefined;
-    if (incoming?.length) await pushRows(orm, userId, key, incoming);
+    if (incoming?.length) await pushRows(orm, userId, key, incoming, serverTime);
   }
 
   for (const removal of deletes) {
     if (!registryKeys.includes(removal.table as RegistryKey)) continue;
-    const table = registry[removal.table as RegistryKey].table as any;
-    const stamp = new Date(removal.deletedAt);
+    const key = removal.table as RegistryKey;
+    const table = registry[key].table as any;
+    const [existingRow] = await orm.select().from(table).where(and(eq(table.userId, userId), eq(table.id, removal.id)));
+    if (existingRow) await snapshotRevision(orm, userId, key, removal.id, existingRow);
     await orm
       .update(table)
-      .set({ deletedAt: stamp, updatedAt: stamp })
+      .set({ deletedAt: serverTime, updatedAt: serverTime })
       .where(and(eq(table.userId, userId), eq(table.id, removal.id)));
   }
 
@@ -104,7 +109,7 @@ async function syncChanges(parsed: any, userId: string) {
   });
 }
 
-async function pushRows(orm: any, userId: string, key: RegistryKey, incoming: Row[]): Promise<void> {
+async function pushRows(orm: any, userId: string, key: RegistryKey, incoming: Row[], serverTime: Date): Promise<void> {
   const { schema } = registry[key];
   const table = registry[key].table as any;
 
@@ -116,21 +121,24 @@ async function pushRows(orm: any, userId: string, key: RegistryKey, incoming: Ro
   if (valid.length === 0) return;
 
   const ids = valid.map((row) => String(row.id));
-  const existing: { id: string; updatedAt: Date }[] = await orm
-    .select({ id: table.id, updatedAt: table.updatedAt })
+  const existing: Row[] = await orm
+    .select()
     .from(table)
     .where(and(eq(table.userId, userId), inArray(table.id, ids)));
 
-  const existingMap = new Map(existing.map((row) => [row.id, new Date(row.updatedAt).getTime()]));
+  const existingMap = new Map(existing.map((row) => [String(row.id), row]));
   const inserts: Row[] = [];
 
+  // The server clock is authoritative: incoming rows always win, but the row they replace
+  // is snapshotted first so a stale or conflicting client push never loses data permanently.
   for (const row of valid) {
-    const values = { ...row, userId, updatedAt: new Date(String(row.updatedAt)), deletedAt: null };
-    const previous = existingMap.get(String(row.id));
+    const values = { ...row, userId, updatedAt: serverTime, deletedAt: null };
+    const existingRow = existingMap.get(String(row.id));
 
-    if (previous === undefined) {
+    if (!existingRow) {
       inserts.push(values);
-    } else if (values.updatedAt.getTime() > previous) {
+    } else {
+      await snapshotRevision(orm, userId, key, String(row.id), existingRow);
       await orm
         .update(table)
         .set(values)
@@ -140,6 +148,52 @@ async function pushRows(orm: any, userId: string, key: RegistryKey, incoming: Ro
 
   if (inserts.length) {
     await orm.insert(table).values(inserts);
+  }
+}
+
+async function snapshotRevision(orm: any, userId: string, tableName: RegistryKey, recordId: string, data: Row): Promise<void> {
+  const [latest] = await orm
+    .select({ version: recordRevisions.version })
+    .from(recordRevisions)
+    .where(
+      and(
+        eq(recordRevisions.userId, userId),
+        eq(recordRevisions.tableName, tableName),
+        eq(recordRevisions.recordId, recordId)
+      )
+    )
+    .orderBy(desc(recordRevisions.version))
+    .limit(1);
+
+  await orm.insert(recordRevisions).values({
+    id: crypto.randomUUID(),
+    userId,
+    tableName,
+    recordId,
+    version: (latest?.version ?? 0) + 1,
+    data
+  });
+
+  const stale = await orm
+    .select({ id: recordRevisions.id })
+    .from(recordRevisions)
+    .where(
+      and(
+        eq(recordRevisions.userId, userId),
+        eq(recordRevisions.tableName, tableName),
+        eq(recordRevisions.recordId, recordId)
+      )
+    )
+    .orderBy(desc(recordRevisions.version))
+    .offset(MAX_REVISIONS);
+
+  if (stale.length) {
+    await orm.delete(recordRevisions).where(
+      inArray(
+        recordRevisions.id,
+        stale.map((row: { id: string }) => row.id)
+      )
+    );
   }
 }
 
