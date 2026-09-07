@@ -21,7 +21,7 @@ import { CashflowChart, CategoryDonut, EquityTrend } from "@/components/charts/C
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
 import { groupByMonth, sum } from "@/lib/calc";
-import { compactMoney, daysUntil, formatDate, money, percent, titleise } from "@/lib/format";
+import { compactMoney, compactMoneyPerPeriod, daysUntil, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { seedDemoData } from "@/lib/seed";
 import { useToast } from "@/components/ui/Toast";
@@ -136,9 +136,9 @@ export default function DashboardPage() {
           />
           <StatCard
             className="p-4"
-            label="Net cashflow"
-            value={money(latestMonth?.net ?? 0)}
-            helper={`${latestMonth?.month ?? "This month"} · ${money(totals.cashflow)} total`}
+            label="Net cashflow / month"
+            value={moneyPerPeriod(latestMonth?.net ?? 0, "month")}
+            helper={`${latestMonth?.month ?? "This month"} · ${moneyPerPeriod(totals.cashflow, "year")} total`}
             tone={totals.cashflow >= 0 ? "positive" : "warning"}
             icon={<TrendingUp size={20} />}
           />
@@ -261,9 +261,9 @@ export default function DashboardPage() {
                     <p className="font-semibold">{percent(metric.lvr, 1)}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted">Cashflow</p>
+                    <p className="text-[11px] uppercase tracking-wide text-muted">Cashflow / year</p>
                     <p className={metric.cashflow >= 0 ? "font-semibold text-positive" : "font-semibold text-negative"}>
-                      {compactMoney(metric.cashflow)}
+                      {compactMoneyPerPeriod(metric.cashflow, "year")}
                     </p>
                   </div>
                 </div>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
 
         <div className="space-y-4">
           <Card>
-            <CardHeader title="Net cashflow trend" subtitle="Monthly" />
+            <CardHeader title="Net cashflow / month" subtitle="Rolling 12 months" />
             <CardBody>
               <EquityTrend data={monthly} />
             </CardBody>

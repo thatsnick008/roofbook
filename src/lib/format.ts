@@ -31,6 +31,25 @@ export function compactMoney(value: number): string {
   return money(value);
 }
 
+type MoneyPeriod = "week" | "fortnight" | "month" | "year";
+
+const periodSuffix: Record<MoneyPeriod, string> = {
+  week: "wk",
+  fortnight: "fortnight",
+  month: "mo",
+  year: "yr"
+};
+
+export function moneyPerPeriod(value: number, period: MoneyPeriod, precise = false): string {
+  const formatted = money(value, precise);
+  return formatted === "—" ? formatted : `${formatted}/${periodSuffix[period]}`;
+}
+
+export function compactMoneyPerPeriod(value: number, period: MoneyPeriod): string {
+  const formatted = compactMoney(value);
+  return formatted === "—" ? formatted : `${formatted}/${periodSuffix[period]}`;
+}
+
 export function percent(value: number, digits = 2): string {
   if (!Number.isFinite(value)) return "—";
   return `${value.toFixed(digits)}%`;

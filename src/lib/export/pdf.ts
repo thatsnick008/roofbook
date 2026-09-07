@@ -44,7 +44,7 @@ export async function exportPortfolioPdf(fy?: number): Promise<void> {
       ["LVR", percent(totals.lvr)],
       ["Income", money(totals.income)],
       ["Expenses", money(totals.expenses)],
-      ["Net cashflow", money(totals.cashflow)],
+      ["Net cashflow / year", money(totals.cashflow)],
       ["Gross yield", percent(totals.grossYield)],
       ["Net yield", percent(totals.netYield)]
     ],
@@ -57,7 +57,7 @@ export async function exportPortfolioPdf(fy?: number): Promise<void> {
   autoTable(doc, {
     startY: 92,
     margin: { left: 400 },
-    head: [["Property", "Valuation", "Debt", "Equity", "LVR", "Cashflow"]],
+    head: [["Property", "Valuation", "Debt", "Equity", "LVR", "Cashflow / year"]],
     body: metrics.map((metric) => [
       metric.property.name,
       money(metric.valuation),

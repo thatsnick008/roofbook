@@ -10,6 +10,14 @@ export interface SyncResult {
 
 type Row = Record<string, unknown> & { id: string; updatedAt?: string; createdAt?: string };
 
+type SyncPayload = {
+  ok: boolean;
+  serverTime: string;
+  changes: Record<string, Row[]>;
+  deletes: { table: string; id: string }[];
+  error?: string;
+};
+
 const changedSince = (row: Row, since?: string): boolean =>
   !since || String(row.updatedAt ?? row.createdAt ?? "") > since;
 
@@ -36,64 +44,35 @@ export async function runSync(options: { full?: boolean } = {}): Promise<SyncRes
   const tombstones = await db.tombstones.toArray();
   const settings = await getSettings();
 
-  let payload: {
-    ok: boolean;
-    serverTime: string;
-    changes: Record<string, Row[]>;
-    deletes: { table: string; id: string }[];
-    error?: string;
-  };
+  let payload: SyncPayload;
 
   try {
-    const response = await fetch("/api/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        since,
-        changes,
-        deletes: tombstones.map((tombstone) => ({
-          table: tombstone.table,
-          id: tombstone.id,
-          deletedAt: tombstone.deletedAt
-        })),
-        settings: {
-          ownerName: settings.ownerName,
-          ownerEmail: settings.ownerEmail,
-          remindersEnabled: settings.remindersEnabled
-        }
-      })
+    const { response, payload: syncPayload } = await requestSync({
+      since,
+      changes,
+      deletes: tombstones.map((tombstone) => ({
+        table: tombstone.table,
+        id: tombstone.id,
+        deletedAt: tombstone.deletedAt
+      })),
+      settings: {
+        ownerName: settings.ownerName,
+        ownerEmail: settings.ownerEmail,
+        remindersEnabled: settings.remindersEnabled
+      }
     });
 
-    payload = await response.json().catch(() => ({
-      ok: false,
-      serverTime: "",
-      changes: {},
-      deletes: [],
-      error: `Sync failed (${response.status})`
-    }));
+    payload = syncPayload;
     if (!response.ok || !payload.ok) {
       const error = payload?.error ?? `Sync failed (${response.status})`;
-      await saveSyncMeta({ lastError: error });
-      return { ok: false, pushed: 0, pulled: 0, error };
+      return await restoreFromServer(error);
     }
   } catch {
     await saveSyncMeta({ lastError: "Network unavailable" });
     return { ok: false, pushed: 0, pulled: 0, error: "Network unavailable" };
   }
 
-  let pulled = 0;
-  await applyWithoutStamping(async () => {
-    for (const [name, rows] of Object.entries(payload.changes ?? {})) {
-      if (!SYNC_TABLES.includes(name as (typeof SYNC_TABLES)[number])) continue;
-      const merged = name === "documents" ? await mergeDocuments(rows) : rows;
-      await db.table(name).bulkPut(merged);
-      pulled += merged.length;
-    }
-    for (const removal of payload.deletes ?? []) {
-      if (!SYNC_TABLES.includes(removal.table as (typeof SYNC_TABLES)[number])) continue;
-      await db.table(removal.table).delete(removal.id);
-    }
-  });
+  const pulled = await applyServerPayload(payload);
 
   if (tombstones.length) {
     await db.tombstones.bulkDelete(tombstones.map((tombstone) => tombstone.id));
@@ -103,6 +82,77 @@ export async function runSync(options: { full?: boolean } = {}): Promise<SyncRes
   await saveSyncMeta({ lastSyncedAt: payload.serverTime, lastError: undefined });
 
   return { ok: true, pushed, pulled };
+}
+
+async function requestSync(body: Record<string, unknown>): Promise<{ response: Response; payload: SyncPayload }> {
+  const response = await fetch("/api/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  const payload = await response.json().catch(() => ({
+    ok: false,
+    serverTime: "",
+    changes: {},
+    deletes: [],
+    error: `Sync failed (${response.status})`
+  }));
+
+  return { response, payload };
+}
+
+async function restoreFromServer(originalError: string): Promise<SyncResult> {
+  try {
+    const { response, payload } = await requestSync({ changes: {}, deletes: [] });
+    if (!response.ok || !payload.ok) {
+      const error = `${originalError}. Server override failed: ${payload?.error ?? `Sync failed (${response.status})`}`;
+      await saveSyncMeta({ lastError: error });
+      return { ok: false, pushed: 0, pulled: 0, error };
+    }
+
+    const pulled = await applyServerPayload(payload, { authoritative: true });
+    await saveSyncMeta({ lastSyncedAt: payload.serverTime, lastError: undefined });
+    return { ok: true, pushed: 0, pulled };
+  } catch {
+    const error = `${originalError}. Server override failed: Network unavailable`;
+    await saveSyncMeta({ lastError: error });
+    return { ok: false, pushed: 0, pulled: 0, error };
+  }
+}
+
+async function applyServerPayload(payload: SyncPayload, options: { authoritative?: boolean } = {}): Promise<number> {
+  const incoming: [string, Row[]][] = [];
+  let pulled = 0;
+
+  for (const [name, rows] of Object.entries(payload.changes ?? {})) {
+    if (!SYNC_TABLES.includes(name as (typeof SYNC_TABLES)[number])) continue;
+    const merged = name === "documents" ? await mergeDocuments(rows) : rows;
+    incoming.push([name, merged]);
+    pulled += merged.length;
+  }
+
+  await applyWithoutStamping(async () => {
+    if (options.authoritative) {
+      for (const name of SYNC_TABLES) {
+        await db.table(name).clear();
+      }
+      await db.tombstones.clear();
+    }
+
+    for (const [name, rows] of incoming) {
+      await db.table(name).bulkPut(rows);
+    }
+
+    if (!options.authoritative) {
+      for (const removal of payload.deletes ?? []) {
+        if (!SYNC_TABLES.includes(removal.table as (typeof SYNC_TABLES)[number])) continue;
+        await db.table(removal.table).delete(removal.id);
+      }
+    }
+  });
+
+  return pulled;
 }
 
 /** Document bytes travel separately from the metadata row. */

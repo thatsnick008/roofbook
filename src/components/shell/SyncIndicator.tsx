@@ -7,6 +7,7 @@ import { cn } from "@/lib/format";
 
 export function SyncIndicator() {
   const { status, lastSyncedAt, error, sync } = useSync();
+  const failureTitle = status === "error" ? syncFailureTitle(error) : undefined;
 
   const label =
     status === "syncing"
@@ -25,7 +26,8 @@ export function SyncIndicator() {
   return (
     <button
       onClick={() => void sync()}
-      title={error ?? label}
+      title={failureTitle ?? error ?? label}
+      aria-label={failureTitle ?? label}
       className={cn(
         "flex items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 py-2 text-xs font-medium transition hover:border-brand/40",
         tone
@@ -43,6 +45,23 @@ export function SyncIndicator() {
       <span className="hidden sm:inline">{label}</span>
     </button>
   );
+}
+
+function syncFailureTitle(error?: string): string {
+  const reason = error ? `Sync failed: ${error}` : "Sync failed.";
+  const lower = error?.toLowerCase() ?? "";
+
+  if (lower.includes("sign in")) {
+    return `${reason} Sign in again, then run Sync now.`;
+  }
+  if (lower.includes("configured") || lower.includes("database") || lower.includes("migration")) {
+    return `${reason} Check the cloud database setup and migrations, then run Sync now.`;
+  }
+  if (lower.includes("network") || lower.includes("unavailable") || lower.includes("offline")) {
+    return `${reason} Check your internet connection, then run Sync now.`;
+  }
+
+  return `${reason} Check your connection, make sure you are signed in, then run Sync now. If it keeps failing, open Settings and push all local data to cloud.`;
 }
 
 function relative(iso: string): string {

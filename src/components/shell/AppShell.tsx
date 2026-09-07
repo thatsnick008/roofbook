@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Building2, Command, LogOut, Moon, Plus, Settings2, Sun } from "lucide-react";
+import { Building2, Command, Moon, Plus, Sun } from "lucide-react";
 import { navItems } from "@/lib/nav";
 import { cn, initials } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -132,15 +132,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => void openAccount()}
                   className="grid h-9 w-9 place-items-center rounded-full bg-brand/15 text-xs font-bold text-brand transition hover:ring-4 hover:ring-brand/15"
                   aria-label="Edit account details"
+                  title="Account details"
                 >
                   {initials(session.user.name ?? session.user.email ?? "U")}
                 </button>
-                <Button variant="ghost" size="icon" className="hidden min-h-11 min-w-11 sm:inline-flex" onClick={() => void openAccount()} aria-label="Account settings">
-                  <Settings2 size={17} />
-                </Button>
-                <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => signOut()} aria-label="Sign out">
-                  <LogOut size={17} />
-                </Button>
               </div>
             ) : null}
           </div>
@@ -190,7 +185,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Field label="New password" hint="Leave blank to keep the current password.">
             <Input type="password" minLength={8} value={account.password} onChange={(event) => setAccount((current) => ({ ...current, password: event.target.value }))} />
           </Field>
-          <Button type="submit" className="w-full" disabled={accountSaving}>{accountSaving ? "Saving…" : "Save account details"}</Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button type="button" variant="secondary" onClick={() => signOut()}>Sign out</Button>
+            <Button type="submit" disabled={accountSaving}>{accountSaving ? "Saving…" : "Save account details"}</Button>
+          </div>
         </form>
       </Modal>
     </div>

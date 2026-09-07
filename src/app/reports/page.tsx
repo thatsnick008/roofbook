@@ -17,7 +17,7 @@ import {
   propertyMetrics,
   sum
 } from "@/lib/calc";
-import { formatDate, money, percent, titleise } from "@/lib/format";
+import { formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
 import { exportBudgetWorkbook, exportPortfolioWorkbook, exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
 import { exportPortfolioPdf } from "@/lib/export/pdf";
 import { EXPORTS_ENABLED } from "@/lib/features";
@@ -181,7 +181,7 @@ export default function ReportsPage() {
                     <th>Property</th>
                     <th className="text-right">Income</th>
                     <th className="text-right">Expenses</th>
-                    <th className="text-right">Net</th>
+                    <th className="text-right">Net / year</th>
                     <th className="text-right">Yield</th>
                     <th className="text-right">Gearing</th>
                   </tr>
@@ -194,7 +194,7 @@ export default function ReportsPage() {
                         <td className="max-w-[200px] truncate font-medium">{metric.property.name}</td>
                         <td className="text-right text-positive">{money(metric.income)}</td>
                         <td className="text-right text-negative">{money(metric.expenses)}</td>
-                        <td className="text-right font-semibold">{money(metric.cashflow)}</td>
+                        <td className="text-right font-semibold">{moneyPerPeriod(metric.cashflow, "year")}</td>
                         <td className="text-right">{percent(metric.netYield, 2)}</td>
                         <td className="text-right">
                           <Badge tone={held ? "warning" : "neutral"}>{held ? "Held" : "Offset"}</Badge>

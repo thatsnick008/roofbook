@@ -22,7 +22,7 @@ import {
   propertyMetrics,
   totalCapitalRequired
 } from "@/lib/calc";
-import { cn, formatDate, money, percent, titleise } from "@/lib/format";
+import { cn, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
 import { useToast } from "@/components/ui/Toast";
@@ -126,13 +126,13 @@ export default function PropertyDetailPage() {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Valuation" value={money(metric.valuation)} helper={formatDate(property.valuationDate)} />
             <StatCard label="Equity" value={money(metric.equity)} tone="positive" helper={percent(metric.lvr, 1) + " LVR"} />
-            <StatCard label="Net cashflow" value={money(metric.cashflow)} tone={metric.cashflow >= 0 ? "positive" : "negative"} />
+            <StatCard label="Net cashflow / year" value={moneyPerPeriod(metric.cashflow, "year")} tone={metric.cashflow >= 0 ? "positive" : "negative"} />
             <StatCard label="Net yield" value={percent(metric.netYield, 2)} helper={`Gross ${percent(metric.grossYield, 2)}`} />
           </section>
 
           <section className="grid gap-4 xl:grid-cols-3">
             <Card className="xl:col-span-2">
-              <CardHeader title="Cashflow" subtitle="Rolling 12 months" />
+              <CardHeader title="Cashflow / month" subtitle="Rolling 12 months" />
               <CardBody>
                 <CashflowChart data={monthly} />
               </CardBody>

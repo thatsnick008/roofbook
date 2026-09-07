@@ -183,7 +183,7 @@ export async function exportBudgetWorkbook(): Promise<void> {
         "Other operating costs": Math.max(operatingCosts - knownOperatingTotal(expenses), 0),
         "Total operating costs": operatingCosts,
         "Capital works": capitalWorks,
-        "Net operating cashflow": rentalIncome - managementFees - operatingCosts
+        "Net operating cashflow / year": rentalIncome - managementFees - operatingCosts
       });
     });
   });
@@ -247,7 +247,7 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
     { Metric: "Portfolio LVR %", Value: round(totals.lvr) },
     { Metric: "Total income", Value: totals.income },
     { Metric: "Total expenses", Value: totals.expenses },
-    { Metric: "Net cashflow", Value: totals.cashflow },
+    { Metric: "Net cashflow / year", Value: totals.cashflow },
     { Metric: "Gross yield %", Value: round(totals.grossYield) },
     { Metric: "Net yield %", Value: round(totals.netYield) },
     { Metric: "Generated", Value: new Date().toLocaleString("en-AU") }
@@ -272,7 +272,7 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
     "LVR %": round(metric.lvr),
     Income: metric.income,
     Expenses: metric.expenses,
-    "Net cashflow": metric.cashflow,
+    "Net cashflow / year": metric.cashflow,
     "Gross yield %": round(metric.grossYield),
     "Net yield %": round(metric.netYield),
     "Capital growth": round(metric.capitalGrowth),

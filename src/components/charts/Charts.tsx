@@ -63,7 +63,7 @@ export function EquityTrend({ data }: { data: { month: string; net: number }[] }
           <Line
             type="monotone"
             dataKey="net"
-            name="Net cashflow"
+            name="Net cashflow / month"
             stroke="rgb(var(--brand))"
             strokeWidth={2.5}
             dot={false}
