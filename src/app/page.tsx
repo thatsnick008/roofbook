@@ -109,45 +109,83 @@ export default function DashboardPage() {
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-        <StatCard
-          className="p-4"
-          label="Portfolio value"
-          value={money(totals.valuation)}
-          helper={`${percent(totals.lvr, 1)} LVR`}
-          icon={<Building2 size={20} />}
-        />
-        <StatCard
-          className="p-4"
-          label="Net equity"
-          value={money(totals.equity)}
-          helper={`${compactMoney(totals.offset)} in offset`}
-          tone="positive"
-          icon={<PiggyBank size={20} />}
-        />
-        <StatCard
-          className="p-4"
-          label="Debt"
-          value={money(totals.debt)}
-          helper="Across all facilities"
-          tone="negative"
-          icon={<Banknote size={20} />}
-        />
-        <StatCard
-          className="p-4"
-          label="Net cashflow"
-          value={money(latestMonth?.net ?? 0)}
-          helper={`${latestMonth?.month ?? "This month"} · ${money(totals.cashflow)} total`}
-          tone={totals.cashflow >= 0 ? "positive" : "warning"}
-          icon={<TrendingUp size={20} />}
-        />
-        <StatCard
-          className="p-4"
-          label="Net LVR"
-          value={percent(totals.netLvr, 1)}
-          helper={`${compactMoney(totals.offset)} offset against debt`}
-          icon={<Wallet size={20} />}
-        />
+      <section className="grid gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 content-start sm:grid-cols-3 xl:col-span-2">
+          <StatCard
+            className="aspect-square p-4"
+            label="Portfolio value"
+            value={money(totals.valuation)}
+            helper={`${percent(totals.lvr, 1)} LVR`}
+            icon={<Building2 size={20} />}
+          />
+          <StatCard
+            className="aspect-square p-4"
+            label="Net equity"
+            value={money(totals.equity)}
+            helper={`${compactMoney(totals.offset)} in offset`}
+            tone="positive"
+            icon={<PiggyBank size={20} />}
+          />
+          <StatCard
+            className="aspect-square p-4"
+            label="Debt"
+            value={money(totals.debt)}
+            helper="Across all facilities"
+            tone="negative"
+            icon={<Banknote size={20} />}
+          />
+          <StatCard
+            className="aspect-square p-4"
+            label="Net cashflow"
+            value={money(latestMonth?.net ?? 0)}
+            helper={`${latestMonth?.month ?? "This month"} · ${money(totals.cashflow)} total`}
+            tone={totals.cashflow >= 0 ? "positive" : "warning"}
+            icon={<TrendingUp size={20} />}
+          />
+          <StatCard
+            className="aspect-square p-4"
+            label="Net LVR"
+            value={percent(totals.netLvr, 1)}
+            helper={`${compactMoney(totals.offset)} offset against debt`}
+            icon={<Wallet size={20} />}
+          />
+        </div>
+
+        <Card>
+          <CardHeader
+            title="Upcoming"
+            subtitle="Next compliance actions"
+            action={
+              <Link href="/reminders" className="text-sm font-semibold text-brand">
+                All
+              </Link>
+            }
+          />
+          <CardBody className="space-y-2.5">
+            {upcoming.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted">Nothing scheduled.</p>
+            ) : (
+              upcoming.map((reminder) => {
+                const days = daysUntil(reminder.dueDate);
+                return (
+                  <div
+                    key={reminder.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg/40 px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{reminder.title}</p>
+                      <p className="text-xs text-muted">{formatDate(reminder.dueDate)}</p>
+                    </div>
+                    <Badge tone={days < 0 ? "negative" : days <= 14 ? "warning" : "neutral"}>
+                      <BellRing size={12} />
+                      {days < 0 ? `${Math.abs(days)}d late` : `${days}d`}
+                    </Badge>
+                  </div>
+                );
+              })
+            )}
+          </CardBody>
+        </Card>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-3">
@@ -238,42 +276,6 @@ export default function DashboardPage() {
         </Card>
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader
-              title="Upcoming"
-              subtitle="Next compliance actions"
-              action={
-                <Link href="/reminders" className="text-sm font-semibold text-brand">
-                  All
-                </Link>
-              }
-            />
-            <CardBody className="space-y-2.5">
-              {upcoming.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted">Nothing scheduled.</p>
-              ) : (
-                upcoming.map((reminder) => {
-                  const days = daysUntil(reminder.dueDate);
-                  return (
-                    <div
-                      key={reminder.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg/40 px-3 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{reminder.title}</p>
-                        <p className="text-xs text-muted">{formatDate(reminder.dueDate)}</p>
-                      </div>
-                      <Badge tone={days < 0 ? "negative" : days <= 14 ? "warning" : "neutral"}>
-                        <BellRing size={12} />
-                        {days < 0 ? `${Math.abs(days)}d late` : `${days}d`}
-                      </Badge>
-                    </div>
-                  );
-                })
-              )}
-            </CardBody>
-          </Card>
-
           <Card>
             <CardHeader title="Net cashflow trend" subtitle="Monthly" />
             <CardBody>

@@ -29,27 +29,31 @@ export function StatCard({
   }[tone];
 
   return (
-    <div className={cn("card relative overflow-hidden p-5 animate-fade-up", className)}>
+    <div className={cn("card relative flex h-full flex-col overflow-hidden p-5 animate-fade-up", className)}>
       <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-70", toneClass)} />
-      <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-          <p className="mt-2 truncate text-2xl font-bold tracking-tight">{value}</p>
-          {helper ? <p className="mt-1 text-xs text-muted">{helper}</p> : null}
+      <div className="relative flex flex-1 flex-col justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
+            <p className="mt-2 truncate text-2xl font-bold tracking-tight">{value}</p>
+          </div>
+          {icon ? <div className={cn("rounded-xl bg-surface/70 p-2.5", toneClass)}>{icon}</div> : null}
         </div>
-        {icon ? <div className={cn("rounded-xl bg-surface/70 p-2.5", toneClass)}>{icon}</div> : null}
+        <div>
+          {helper ? <p className="text-xs text-muted">{helper}</p> : null}
+          {typeof delta === "number" && Number.isFinite(delta) ? (
+            <p
+              className={cn(
+                "mt-2 inline-flex items-center gap-1 text-xs font-semibold",
+                delta >= 0 ? "text-positive" : "text-negative"
+              )}
+            >
+              {delta >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {percent(Math.abs(delta), 1)}
+            </p>
+          ) : null}
+        </div>
       </div>
-      {typeof delta === "number" && Number.isFinite(delta) ? (
-        <p
-          className={cn(
-            "relative mt-3 inline-flex items-center gap-1 text-xs font-semibold",
-            delta >= 0 ? "text-positive" : "text-negative"
-          )}
-        >
-          {delta >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-          {percent(Math.abs(delta), 1)}
-        </p>
-      ) : null}
     </div>
   );
 }

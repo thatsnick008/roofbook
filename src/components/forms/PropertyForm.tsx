@@ -270,13 +270,16 @@ export function PropertyForm({
               onValueChange={(value) => patchProperty({ annualDepreciation: value })}
             />
           </Field>
-          <Field label="Tax treatment" hint="Choose where this property's profit or loss is reported.">
+          <Field
+            label="Gearing treatment"
+            hint="A loss can offset your other income, or be held within this property per current negative-gearing rules."
+          >
             <Select
               value={property.taxTreatment}
               onChange={(event) => patchProperty({ taxTreatment: event.target.value as PropertyTaxTreatment })}
             >
-              <option value="offset">Offset against tax</option>
-              <option value="retain">Hold within property</option>
+              <option value="offset">Offset loss against other income</option>
+              <option value="retain">Hold loss within property</option>
             </Select>
           </Field>
           <Field label="Accent colour" className="sm:col-span-2">

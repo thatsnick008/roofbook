@@ -4,6 +4,7 @@ import type {
   Loan,
   PortfolioTotals,
   Property,
+  PropertyTaxTreatment,
   PurchaseDetails
 } from "./types";
 
@@ -241,6 +242,38 @@ export function groupByMonth(
       expenses: Math.round(value.expenses),
       net: Math.round(value.income - value.expenses)
     }));
+}
+
+export interface GearingEntry {
+  propertyId: string;
+  taxable: number;
+  taxTreatment: PropertyTaxTreatment;
+}
+
+export interface GearingResult {
+  /** Combined position that offsets against other income, per current negative-gearing rules. */
+  combinedTaxable: number;
+  /** Losses quarantined within their property instead of offsetting other income. */
+  heldLosses: number;
+  byProperty: (GearingEntry & { held: boolean })[];
+}
+
+/** Properties held to "retain" quarantine their losses within the property rather than offsetting other income. */
+export function calculateGearing(entries: GearingEntry[]): GearingResult {
+  let combinedTaxable = 0;
+  let heldLosses = 0;
+
+  const byProperty = entries.map((entry) => {
+    const held = entry.taxTreatment === "retain" && entry.taxable < 0;
+    if (held) {
+      heldLosses += entry.taxable;
+    } else {
+      combinedTaxable += entry.taxable;
+    }
+    return { ...entry, held };
+  });
+
+  return { combinedTaxable, heldLosses, byProperty };
 }
 
 export function nextOccurrence(dueDate: string, recurrence: string): string {

@@ -4,12 +4,13 @@ import * as React from "react";
 import { FileBarChart, FileSpreadsheet, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/Primitives";
+import { Badge, PageHeader } from "@/components/ui/Primitives";
 import { Select } from "@/components/ui/Field";
 import { StatCard } from "@/components/ui/StatCard";
 import { useExpenses, useIncome, useLoans, usePortfolio, useProperties, usePurchases } from "@/hooks/useData";
 import {
   availableFinancialYears,
+  calculateGearing,
   financialYearLabel,
   financialYearRange,
   inFinancialYear,
@@ -53,7 +54,20 @@ export default function ReportsPage() {
   const fees = sum(fyIncome.map((entry) => entry.managementFee));
   const deductible = sum(fyExpenses.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount));
   const capital = sum(fyExpenses.filter((entry) => entry.capital).map((entry) => entry.amount));
-  const taxable = gross - fees - deductible;
+
+  const gearing = calculateGearing(
+    properties.map((property) => {
+      const propIncome = fyIncome.filter((entry) => entry.propertyId === property.id);
+      const propExpenses = fyExpenses.filter((entry) => entry.propertyId === property.id);
+      const propGross = sum(propIncome.map((entry) => entry.amount));
+      const propFees = sum(propIncome.map((entry) => entry.managementFee));
+      const propDeductible = sum(
+        propExpenses.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount)
+      );
+      return { propertyId: property.id, taxTreatment: property.taxTreatment, taxable: propGross - propFees - propDeductible };
+    })
+  );
+  const taxable = gearing.combinedTaxable;
 
   const byProperty = properties.map((property) =>
     propertyMetrics(
@@ -123,6 +137,20 @@ export default function ReportsPage() {
         />
       </section>
 
+      {gearing.heldLosses !== 0 ? (
+        <Card>
+          <CardBody className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Held within properties</p>
+              <p className="mt-0.5 text-xs text-muted">
+                Quarantined per current negative-gearing rules — not offset against other income.
+              </p>
+            </div>
+            <span className="text-lg font-bold text-negative">{money(gearing.heldLosses)}</span>
+          </CardBody>
+        </Card>
+      ) : null}
+
       {EXPORTS_ENABLED ? <Card>
         <CardHeader title="Accountant export pack" subtitle="One click per schedule — Excel or CSV" />
         <CardBody className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -155,18 +183,25 @@ export default function ReportsPage() {
                     <th className="text-right">Expenses</th>
                     <th className="text-right">Net</th>
                     <th className="text-right">Yield</th>
+                    <th className="text-right">Gearing</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {byProperty.map((metric) => (
-                    <tr key={metric.property.id}>
-                      <td className="max-w-[200px] truncate font-medium">{metric.property.name}</td>
-                      <td className="text-right text-positive">{money(metric.income)}</td>
-                      <td className="text-right text-negative">{money(metric.expenses)}</td>
-                      <td className="text-right font-semibold">{money(metric.cashflow)}</td>
-                      <td className="text-right">{percent(metric.netYield, 2)}</td>
-                    </tr>
-                  ))}
+                  {byProperty.map((metric) => {
+                    const held = gearing.byProperty.find((entry) => entry.propertyId === metric.property.id)?.held;
+                    return (
+                      <tr key={metric.property.id}>
+                        <td className="max-w-[200px] truncate font-medium">{metric.property.name}</td>
+                        <td className="text-right text-positive">{money(metric.income)}</td>
+                        <td className="text-right text-negative">{money(metric.expenses)}</td>
+                        <td className="text-right font-semibold">{money(metric.cashflow)}</td>
+                        <td className="text-right">{percent(metric.netYield, 2)}</td>
+                        <td className="text-right">
+                          <Badge tone={held ? "warning" : "neutral"}>{held ? "Held" : "Offset"}</Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
