@@ -16,6 +16,7 @@ import {
   financialYearRange,
   inFinancialYear,
   propertyMetrics,
+  recognizedIncome,
   sum
 } from "@/lib/calc";
 import { formatDate, money as formatMoney, moneyPerPeriod as formatMoneyPerPeriod, percent, titleise } from "@/lib/format";
@@ -54,16 +55,17 @@ export default function ReportsPage() {
     formatMoneyPerPeriod(value, period, precise, currency);
 
   const fyIncome = income.filter((entry) => inFinancialYear(entry.date, fy));
+  const countedFyIncome = recognizedIncome(fyIncome);
   const fyExpenses = expenses.filter((entry) => inFinancialYear(entry.date, fy));
 
-  const gross = sum(fyIncome.map((entry) => entry.amount));
-  const fees = sum(fyIncome.map((entry) => entry.managementFee));
+  const gross = sum(countedFyIncome.map((entry) => entry.amount));
+  const fees = sum(countedFyIncome.map((entry) => entry.managementFee));
   const deductible = sum(fyExpenses.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount));
   const capital = sum(fyExpenses.filter((entry) => entry.capital).map((entry) => entry.amount));
 
   const gearing = calculateGearing(
     properties.map((property) => {
-      const propIncome = fyIncome.filter((entry) => entry.propertyId === property.id);
+      const propIncome = countedFyIncome.filter((entry) => entry.propertyId === property.id);
       const propExpenses = fyExpenses.filter((entry) => entry.propertyId === property.id);
       const propGross = sum(propIncome.map((entry) => entry.amount));
       const propFees = sum(propIncome.map((entry) => entry.managementFee));

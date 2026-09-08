@@ -21,7 +21,7 @@ import { CashflowChart, CategoryDonut, EquityTrend } from "@/components/charts/C
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
-import { groupByMonth, sum } from "@/lib/calc";
+import { groupByMonth, recognizedIncome, sum } from "@/lib/calc";
 import { compactMoney, compactMoneyPerPeriod, daysUntil, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { seedDemoData } from "@/lib/seed";
@@ -50,6 +50,7 @@ export default function DashboardPage() {
         const groupMetrics = metrics.filter((metric) => (metric.property.currency ?? "AUD") === currency);
         const propertyIds = new Set(groupMetrics.map((metric) => metric.property.id));
         const groupIncome = income.filter((entry) => propertyIds.has(entry.propertyId));
+        const countedGroupIncome = recognizedIncome(groupIncome);
         const groupExpenses = expenses.filter((entry) => propertyIds.has(entry.propertyId));
         const annualDepreciation = sum(groupMetrics.map((metric) => metric.annualDepreciation));
         const monthly = groupByMonth(groupIncome, groupExpenses, annualDepreciation);
@@ -73,7 +74,7 @@ export default function DashboardPage() {
           monthly,
           latestMonth: monthly[monthly.length - 1],
           categoryData,
-          incomeEntries: groupIncome.length
+          incomeEntries: countedGroupIncome.length
         };
       }),
     [expenses, income, metrics, totalsByCurrency]

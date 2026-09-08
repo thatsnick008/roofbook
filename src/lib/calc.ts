@@ -45,6 +45,14 @@ export function inFinancialYear(dateIso: string, fy: number, startMonth = FY_STA
   return financialYearOf(dateIso, startMonth) === fy;
 }
 
+export function isRecognizedIncome(entry: IncomeEntry): boolean {
+  return entry.category !== "rent" || entry.status === "received";
+}
+
+export function recognizedIncome(income: IncomeEntry[]): IncomeEntry[] {
+  return income.filter(isRecognizedIncome);
+}
+
 /** Flat per-period rent derived from the property's annual estimate and billing frequency. */
 export function rentAmountPerPeriod(property: Pick<Property, "annualRent" | "rentFrequency">): number {
   const divisor = property.rentFrequency === "weekly" ? 52 : property.rentFrequency === "fortnightly" ? 26 : 12;
@@ -189,8 +197,9 @@ export function propertyMetrics(
   const valuation = property.currentValuation || purchase?.valuation || purchase?.purchasePrice || 0;
   const debt = loan?.loanBalance ?? 0;
   const offset = loan?.offsetBalance ?? 0;
-  const grossIncome = sum(income.map((entry) => entry.amount));
-  const managementFees = sum(income.map((entry) => entry.managementFee));
+  const countedIncome = recognizedIncome(income);
+  const grossIncome = sum(countedIncome.map((entry) => entry.amount));
+  const managementFees = sum(countedIncome.map((entry) => entry.managementFee));
   const cashExpenses = sum(expenses.filter((entry) => !entry.capital).map((entry) => entry.amount));
   const interest = annualInterestForecast(loan);
   const annualDepreciation = property.annualDepreciation ?? 0;
@@ -213,8 +222,8 @@ export function propertyMetrics(
     interest,
     annualDepreciation,
     cashflow: netCashflow,
-    grossYield: valuation > 0 ? (annualise(income) / valuation) * 100 : 0,
-    netYield: valuation > 0 ? ((annualise(income) - totalExpenses) / valuation) * 100 : 0,
+    grossYield: valuation > 0 ? (annualise(countedIncome) / valuation) * 100 : 0,
+    netYield: valuation > 0 ? ((annualise(countedIncome) - totalExpenses) / valuation) * 100 : 0,
     capitalGrowth: purchase?.purchasePrice ? valuation - purchase.purchasePrice : 0,
     capitalRequired,
     cashOnCash: capitalRequired > 0 ? (netCashflow / capitalRequired) * 100 : 0
@@ -268,6 +277,7 @@ export function groupByMonth(
   const key = (iso: string) => iso.slice(0, 7);
 
   income.forEach((entry) => {
+    if (!isRecognizedIncome(entry)) return;
     const bucket = buckets.get(key(entry.date)) ?? { income: 0, expenses: 0 };
     bucket.income += entry.amount;
     bucket.expenses += entry.managementFee;

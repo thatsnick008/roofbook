@@ -10,6 +10,7 @@ import {
   offsetSavingsPerYear,
   portfolioTotals,
   propertyMetrics,
+  recognizedIncome,
   sum,
   totalCapitalRequired
 } from "../calc";
@@ -154,11 +155,12 @@ export async function exportBudgetWorkbook(currency?: CurrencyCode): Promise<voi
       const income = snapshot.income.filter(
         (entry) => entry.propertyId === property.id && inFinancialYear(entry.date, year)
       );
+      const countedIncome = recognizedIncome(income);
       const expenses = snapshot.expenses.filter(
         (entry) => entry.propertyId === property.id && inFinancialYear(entry.date, year)
       );
-      const rentalIncome = sum(income.map((entry) => entry.amount));
-      const managementFees = sum(income.map((entry) => entry.managementFee));
+      const rentalIncome = sum(countedIncome.map((entry) => entry.amount));
+      const managementFees = sum(countedIncome.map((entry) => entry.managementFee));
       const operatingCosts = sum(expenses.filter((entry) => !entry.capital).map((entry) => entry.amount));
       const capitalWorks = sum(expenses.filter((entry) => entry.capital).map((entry) => entry.amount));
 
@@ -228,6 +230,7 @@ export function triggerDownload(blob: Blob, filename: string): void {
 export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
   const names = propertyNameMap(snapshot.properties);
   const income = fy ? snapshot.income.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.income;
+  const countedIncome = recognizedIncome(income);
   const expenses = fy ? snapshot.expenses.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.expenses;
 
   const metrics = snapshot.properties.map((property) =>
@@ -360,8 +363,8 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
   });
 
   const taxSheet: SheetRow[] = [
-    { Item: "Gross rental income", Amount: sum(income.map((entry) => entry.amount)) },
-    { Item: "Management fees", Amount: sum(income.map((entry) => entry.managementFee)) },
+    { Item: "Gross rental income", Amount: sum(countedIncome.map((entry) => entry.amount)) },
+    { Item: "Management fees", Amount: sum(countedIncome.map((entry) => entry.managementFee)) },
     ...[...categoryTotals.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([category, amount]) => ({ Item: titleise(category), Amount: round(amount) })),
@@ -376,8 +379,8 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
     {
       Item: "Net taxable position",
       Amount: round(
-        sum(income.map((entry) => entry.amount)) -
-          sum(income.map((entry) => entry.managementFee)) -
+        sum(countedIncome.map((entry) => entry.amount)) -
+          sum(countedIncome.map((entry) => entry.managementFee)) -
           sum(expenses.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount))
       )
     }

@@ -11,7 +11,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { IncomeForm } from "@/components/forms/IncomeForm";
 import { useExpenses, useIncome, useProperties } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
-import { availableFinancialYears, financialYearLabel, inFinancialYear, managementFeeFor, rentAmountPerPeriod, sum } from "@/lib/calc";
+import { availableFinancialYears, financialYearLabel, inFinancialYear, managementFeeFor, recognizedIncome, rentAmountPerPeriod, sum } from "@/lib/calc";
 import { formatDate, money, titleise } from "@/lib/format";
 import { exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
@@ -37,8 +37,9 @@ export default function IncomePage() {
     .filter((entry) => (fy === "all" ? true : inFinancialYear(entry.date, fy)))
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const gross = sum(rows.map((entry) => entry.amount));
-  const fees = sum(rows.map((entry) => entry.managementFee));
+  const countedRows = recognizedIncome(rows);
+  const gross = sum(countedRows.map((entry) => entry.amount));
+  const fees = sum(countedRows.map((entry) => entry.managementFee));
   const arrears = rows.filter((entry) => entry.status === "arrears").length;
   const vacant = rows.filter((entry) => entry.status === "vacant").length;
   const rentRun = properties
