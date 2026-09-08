@@ -9,6 +9,7 @@ import { Badge, PageHeader } from "@/components/ui/Primitives";
 import { Field, Input, Toggle } from "@/components/ui/Field";
 import { useSettings } from "@/hooks/useData";
 import { useSync } from "@/components/providers/SyncProvider";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { exportBackup, importBackup } from "@/lib/export/backup";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
@@ -21,6 +22,7 @@ import { APP_VERSION } from "@/lib/version";
 export default function SettingsPage() {
   const toast = useToast();
   const settings = useSettings();
+  const { currency } = useCurrencyFilter();
   const { theme, setTheme } = useTheme();
   const { status, lastSyncedAt, error, sync } = useSync();
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -226,7 +228,7 @@ export default function SettingsPage() {
                 <Upload size={16} /> Restore backup
               </Button>
               {EXPORTS_ENABLED ? (
-                <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
+                <Button variant="secondary" onClick={() => exportPortfolioWorkbook(undefined, currency)}>
                   <Download size={16} /> Export Excel
                 </Button>
               ) : null}

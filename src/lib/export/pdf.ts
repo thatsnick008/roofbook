@@ -1,12 +1,14 @@
 import { financialYearLabel, portfolioTotals, propertyMetrics, inFinancialYear } from "../calc";
 import { loadSnapshot } from "../data";
 import { money, percent, titleise } from "../format";
+import type { CurrencyCode } from "../types";
 
-export async function exportPortfolioPdf(fy?: number): Promise<void> {
+export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "AUD"): Promise<void> {
   // Loaded on demand: jsPDF is browser-only and would otherwise ship in the initial bundle.
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
 
-  const snapshot = await loadSnapshot();
+  const snapshot = await loadSnapshot(currency);
+  const amount = (value: number, precise = false) => money(value, precise, currency);
   const income = fy ? snapshot.income.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.income;
   const expenses = fy ? snapshot.expenses.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.expenses;
 
@@ -30,21 +32,21 @@ export async function exportPortfolioPdf(fy?: number): Promise<void> {
   doc.setFontSize(18);
   doc.text("Roofbook", 40, 34);
   doc.setFontSize(10);
-  doc.text(`Portfolio report · ${period} · Generated ${new Date().toLocaleDateString("en-AU")}`, 40, 52);
+  doc.text(`Portfolio report · ${currency} · ${period} · Generated ${new Date().toLocaleDateString("en-AU")}`, 40, 52);
 
   autoTable(doc, {
     startY: 92,
     head: [["Portfolio metric", "Value"]],
     body: [
       ["Properties", String(totals.properties)],
-      ["Valuation", money(totals.valuation)],
-      ["Debt", money(totals.debt)],
-      ["Offset", money(totals.offset)],
-      ["Equity", money(totals.equity)],
+      ["Valuation", amount(totals.valuation)],
+      ["Debt", amount(totals.debt)],
+      ["Offset", amount(totals.offset)],
+      ["Equity", amount(totals.equity)],
       ["LVR", percent(totals.lvr)],
-      ["Income", money(totals.income)],
-      ["Expenses", money(totals.expenses)],
-      ["Net cashflow / year", money(totals.cashflow)],
+      ["Income", amount(totals.income)],
+      ["Expenses", amount(totals.expenses)],
+      ["Net cashflow / year", amount(totals.cashflow)],
       ["Gross yield", percent(totals.grossYield)],
       ["Net yield", percent(totals.netYield)]
     ],
@@ -60,11 +62,11 @@ export async function exportPortfolioPdf(fy?: number): Promise<void> {
     head: [["Property", "Valuation", "Debt", "Equity", "LVR", "Cashflow / year"]],
     body: metrics.map((metric) => [
       metric.property.name,
-      money(metric.valuation),
-      money(metric.debt),
-      money(metric.equity),
+      amount(metric.valuation),
+      amount(metric.debt),
+      amount(metric.equity),
       percent(metric.lvr, 1),
-      money(metric.cashflow)
+      amount(metric.cashflow)
     ]),
     theme: "grid",
     headStyles: { fillColor: [37, 99, 235] },
@@ -81,8 +83,8 @@ export async function exportPortfolioPdf(fy?: number): Promise<void> {
         entry.date,
         redact(snapshot.properties.find((property) => property.id === entry.propertyId)?.name ?? ""),
         titleise(entry.category),
-        money(entry.amount, true),
-        money(entry.managementFee, true),
+        amount(entry.amount, true),
+        amount(entry.managementFee, true),
         titleise(entry.status)
       ]),
     theme: "striped",
@@ -107,8 +109,8 @@ export async function exportPortfolioPdf(fy?: number): Promise<void> {
         redact(snapshot.properties.find((property) => property.id === entry.propertyId)?.name ?? ""),
         titleise(entry.category),
         entry.supplier ?? "",
-        money(entry.amount, true),
-        money(entry.gst, true),
+        amount(entry.amount, true),
+        amount(entry.gst, true),
         entry.taxDeductible ? "Yes" : "No"
       ]),
     theme: "striped",
@@ -122,7 +124,7 @@ export async function exportPortfolioPdf(fy?: number): Promise<void> {
     margin: { top: 46 }
   });
 
-  doc.save(`roofbook-${period.replace("/", "-")}.pdf`);
+  doc.save(`roofbook-${currency.toLowerCase()}-${period.replace("/", "-")}.pdf`);
 }
 
 function redact(value: string): string {

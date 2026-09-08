@@ -9,6 +9,7 @@ import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
 import { StatCard } from "@/components/ui/StatCard";
 import { ReminderForm } from "@/components/forms/ReminderForm";
 import { useProperties, useReminders } from "@/hooks/useData";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { nextOccurrence } from "@/lib/calc";
 import { cn, daysUntil, formatDate, titleise } from "@/lib/format";
 import { exportSingleSheet } from "@/lib/export/excel";
@@ -18,6 +19,7 @@ import type { Reminder } from "@/lib/types";
 
 export default function RemindersPage() {
   const toast = useToast();
+  const { currency } = useCurrencyFilter();
   const reminders = useReminders() ?? [];
   const properties = useProperties() ?? [];
   const [filter, setFilter] = React.useState<"open" | "all" | "done">("open");
@@ -56,7 +58,7 @@ export default function RemindersPage() {
         actions={
           <>
             {EXPORTS_ENABLED ? (
-              <Button variant="secondary" onClick={() => exportSingleSheet("Reminders")}>
+              <Button variant="secondary" onClick={() => exportSingleSheet("Reminders", undefined, currency)}>
                 <Download size={16} /> Excel
               </Button>
             ) : null}

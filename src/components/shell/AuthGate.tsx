@@ -57,7 +57,7 @@ function AuthGateInner({ children }: { children: React.ReactNode }) {
     return (
       <>
         {offlineAllowed ? (
-          <div className="flex items-center justify-center gap-2 bg-warning/15 px-4 py-2 text-xs font-semibold text-warning">
+          <div className="flex items-center justify-center gap-2 bg-warning/15 px-4 pb-2 pt-[calc(max(env(safe-area-inset-top),0.5rem))] text-xs font-semibold text-warning">
             <WifiOff size={14} /> Offline — working from your local copy. Changes sync when you reconnect.
           </div>
         ) : null}

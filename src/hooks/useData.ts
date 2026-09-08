@@ -4,61 +4,47 @@ import * as React from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSettings } from "@/lib/db";
 import { propertyMetrics, portfolioTotals, type PropertyMetrics } from "@/lib/calc";
-import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
+import { useCurrencyFilter, DEFAULT_CURRENCY } from "@/components/providers/CurrencyProvider";
 import type { AppSettings, CurrencyCode, PortfolioTotals, Property } from "@/lib/types";
 
-export const DEFAULT_CURRENCY: CurrencyCode = "AUD";
+export { DEFAULT_CURRENCY };
 
 export const currencyOf = (property: Pick<Property, "currency">): CurrencyCode => property.currency ?? DEFAULT_CURRENCY;
 
-/** Every currency present in the portfolio, ignoring the active filter so the picker never hides itself. */
-export function usePortfolioCurrencies(): CurrencyCode[] {
-  const properties = useLiveQuery(() => db.properties.toArray(), [], undefined);
-  return React.useMemo(() => [...new Set((properties ?? []).map(currencyOf))].sort(), [properties]);
-}
-
-interface CurrencyScope {
-  active: boolean;
-  ids: Set<string>;
-}
-
-/** Resolves the session currency filter to the set of property ids every other hook is scoped to. */
-function useCurrencyScope(): CurrencyScope {
+/** Resolves the active currency to the set of property ids every other hook is scoped to. */
+function useCurrencyScope(): Set<string> {
   const { currency } = useCurrencyFilter();
   const properties = useLiveQuery(() => db.properties.toArray(), [], undefined);
 
-  return React.useMemo(() => {
-    if (currency === "all") return { active: false, ids: new Set<string>() };
-    const ids = new Set(
-      (properties ?? []).filter((property) => currencyOf(property) === currency).map((property) => property.id)
-    );
-    return { active: true, ids };
-  }, [currency, properties]);
+  return React.useMemo(
+    () =>
+      new Set(
+        (properties ?? []).filter((property) => currencyOf(property) === currency).map((property) => property.id)
+      ),
+    [currency, properties]
+  );
 }
 
 function useScopedByProperty<T extends { propertyId: string }>(rows: T[] | undefined): T[] | undefined {
-  const scope = useCurrencyScope();
-  return React.useMemo(
-    () => (rows && scope.active ? rows.filter((row) => scope.ids.has(row.propertyId)) : rows),
-    [rows, scope]
-  );
+  const ids = useCurrencyScope();
+  return React.useMemo(() => (rows ? rows.filter((row) => ids.has(row.propertyId)) : rows), [ids, rows]);
 }
 
 /** Records without a property are portfolio-wide, so they stay visible under every currency. */
 function useScopedByOptionalProperty<T extends { propertyId?: string }>(rows: T[] | undefined): T[] | undefined {
-  const scope = useCurrencyScope();
+  const ids = useCurrencyScope();
   return React.useMemo(
-    () => (rows && scope.active ? rows.filter((row) => !row.propertyId || scope.ids.has(row.propertyId)) : rows),
-    [rows, scope]
+    () => (rows ? rows.filter((row) => !row.propertyId || ids.has(row.propertyId)) : rows),
+    [ids, rows]
   );
 }
 
 export function useProperties() {
-  const scope = useCurrencyScope();
+  const ids = useCurrencyScope();
   const properties = useLiveQuery(() => db.properties.toArray(), [], undefined);
   return React.useMemo(
-    () => (properties && scope.active ? properties.filter((property) => scope.ids.has(property.id)) : properties),
-    [properties, scope]
+    () => (properties ? properties.filter((property) => ids.has(property.id)) : properties),
+    [ids, properties]
   );
 }
 

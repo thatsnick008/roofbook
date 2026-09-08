@@ -8,6 +8,7 @@ import { Badge, PageHeader } from "@/components/ui/Primitives";
 import { Select } from "@/components/ui/Field";
 import { StatCard } from "@/components/ui/StatCard";
 import { useExpenses, useIncome, useLoans, usePortfolio, useProperties, usePurchases } from "@/hooks/useData";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import {
   availableFinancialYears,
   calculateGearing,
@@ -17,7 +18,7 @@ import {
   propertyMetrics,
   sum
 } from "@/lib/calc";
-import { formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
+import { formatDate, money as formatMoney, moneyPerPeriod as formatMoneyPerPeriod, percent, titleise } from "@/lib/format";
 import { exportBudgetWorkbook, exportPortfolioWorkbook, exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
 import { exportPortfolioPdf } from "@/lib/export/pdf";
 import { EXPORTS_ENABLED } from "@/lib/features";
@@ -36,6 +37,7 @@ const sheetShortcuts = [
 
 export default function ReportsPage() {
   const toast = useToast();
+  const { currency } = useCurrencyFilter();
   const properties = useProperties() ?? [];
   const purchases = usePurchases() ?? [];
   const loans = useLoans() ?? [];
@@ -46,6 +48,10 @@ export default function ReportsPage() {
   const years = availableFinancialYears(income, expenses);
   const [fy, setFy] = React.useState<number>(years[0] ?? new Date().getFullYear());
   const range = financialYearRange(fy);
+
+  const money = (value: number, precise = false) => formatMoney(value, precise, currency);
+  const moneyPerPeriod = (value: number, period: "week" | "fortnight" | "month" | "year", precise = false) =>
+    formatMoneyPerPeriod(value, period, precise, currency);
 
   const fyIncome = income.filter((entry) => inFinancialYear(entry.date, fy));
   const fyExpenses = expenses.filter((entry) => inFinancialYear(entry.date, fy));
@@ -110,13 +116,13 @@ export default function ReportsPage() {
             </Select>
             {EXPORTS_ENABLED ? (
               <>
-                <Button variant="secondary" onClick={() => run(() => exportPortfolioPdf(fy), "PDF report")}>
+                <Button variant="secondary" onClick={() => run(() => exportPortfolioPdf(fy, currency), "PDF report")}>
                   <FileText size={16} /> PDF
                 </Button>
-                <Button onClick={() => run(() => exportPortfolioWorkbook(fy), "Excel workbook")}>
+                <Button onClick={() => run(() => exportPortfolioWorkbook(fy, currency), "Excel workbook")}>
                   <FileSpreadsheet size={16} /> Excel workbook
                 </Button>
-                <Button variant="secondary" onClick={() => run(() => exportBudgetWorkbook(), "Budgeting workbook")}>
+                <Button variant="secondary" onClick={() => run(() => exportBudgetWorkbook(currency), "Budgeting workbook")}>
                   <FileSpreadsheet size={16} /> Budgeting format
                 </Button>
               </>
@@ -158,10 +164,10 @@ export default function ReportsPage() {
             <div key={sheet} className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-bg/40 px-3 py-2.5">
               <span className="truncate text-sm font-medium">{sheet}</span>
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to Excel`} onClick={() => run(() => exportSingleSheet(sheet, fy), sheet)}>
+                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to Excel`} onClick={() => run(() => exportSingleSheet(sheet, fy, currency), sheet)}>
                   <FileSpreadsheet size={16} />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to CSV`} onClick={() => run(() => exportSingleSheetCsv(sheet, fy), sheet)}>
+                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to CSV`} onClick={() => run(() => exportSingleSheetCsv(sheet, fy, currency), sheet)}>
                   <Download size={16} />
                 </Button>
               </div>

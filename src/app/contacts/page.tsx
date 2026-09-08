@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
 import { ContactForm } from "@/components/forms/ContactForm";
 import { useContacts, useProperties } from "@/hooks/useData";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { daysUntil, formatDate, money, titleise } from "@/lib/format";
 import { exportSingleSheet } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
@@ -16,6 +17,7 @@ import type { Contact } from "@/lib/types";
 
 export default function ContactsPage() {
   const toast = useToast();
+  const { currency } = useCurrencyFilter();
   const contacts = useContacts() ?? [];
   const properties = useProperties() ?? [];
   const [editing, setEditing] = React.useState<Contact | undefined>();
@@ -34,7 +36,7 @@ export default function ContactsPage() {
         actions={
           <>
             {EXPORTS_ENABLED ? (
-              <Button variant="secondary" onClick={() => exportSingleSheet("Contacts & Insurance")}>
+              <Button variant="secondary" onClick={() => exportSingleSheet("Contacts & Insurance", undefined, currency)}>
                 <Download size={16} /> Excel
               </Button>
             ) : null}

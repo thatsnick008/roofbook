@@ -30,7 +30,7 @@ export default function CalculatorPage() {
   const { metrics } = usePortfolio();
   const [input, setInput] = React.useState<CalculatorInput>(DEFAULTS);
 
-  const displayCurrency: CurrencyCode = currency === "all" ? stateLookup(input.state).currency : currency;
+  const displayCurrency: CurrencyCode = currency;
   const suburbs = suburbsForState(input.state);
   const result = React.useMemo(() => estimateProperty(input), [input]);
 
@@ -258,11 +258,7 @@ export default function CalculatorPage() {
           <Card>
             <CardHeader
               title="Cumulative portfolio impact"
-              subtitle={
-                currency === "all"
-                  ? "Existing properties across all currencies"
-                  : `Existing ${currency} properties only`
-              }
+              subtitle={`Existing ${currency} properties only`}
               action={<Layers size={18} className="text-muted" />}
             />
             <CardBody className="overflow-x-auto">

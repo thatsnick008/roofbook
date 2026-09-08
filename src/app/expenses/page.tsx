@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Field";
 import { StatCard } from "@/components/ui/StatCard";
 import { ExpenseForm } from "@/components/forms/ExpenseForm";
 import { useExpenses, useIncome, useProperties } from "@/hooks/useData";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { availableFinancialYears, financialYearLabel, inFinancialYear, sum } from "@/lib/calc";
 import { formatDate, money, titleise } from "@/lib/format";
 import { exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
@@ -20,6 +21,7 @@ import type { ExpenseEntry } from "@/lib/types";
 
 export default function ExpensesPage() {
   const toast = useToast();
+  const { currency } = useCurrencyFilter();
   const properties = useProperties() ?? [];
   const income = useIncome() ?? [];
   const expenses = useExpenses() ?? [];
@@ -56,10 +58,10 @@ export default function ExpensesPage() {
           <>
             {EXPORTS_ENABLED ? (
               <>
-                <Button variant="secondary" onClick={() => exportSingleSheetCsv("Expenses", fy === "all" ? undefined : fy)}>
+                <Button variant="secondary" onClick={() => exportSingleSheetCsv("Expenses", fy === "all" ? undefined : fy, currency)}>
                   <FileSpreadsheet size={16} /> CSV
                 </Button>
-                <Button variant="secondary" onClick={() => exportSingleSheet("Expenses", fy === "all" ? undefined : fy)}>
+                <Button variant="secondary" onClick={() => exportSingleSheet("Expenses", fy === "all" ? undefined : fy, currency)}>
                   <Download size={16} /> Excel
                 </Button>
               </>

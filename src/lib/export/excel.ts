@@ -16,6 +16,7 @@ import {
 import { loadSnapshot, propertyNameMap, type Snapshot } from "../data";
 import { titleise } from "../format";
 import { roofbookTemplate, templateForSheet } from "./roofbook-template";
+import type { CurrencyCode } from "../types";
 
 export type SheetRow = Record<string, string | number | boolean | null | undefined>;
 
@@ -122,9 +123,9 @@ export async function downloadWorkbook(sheets: Sheet[], filename: string): Promi
   });
 }
 
-export async function exportBudgetWorkbook(): Promise<void> {
+export async function exportBudgetWorkbook(currency?: CurrencyCode): Promise<void> {
   const XLSX = await loadXlsx();
-  const snapshot = await loadSnapshot();
+  const snapshot = await loadSnapshot(currency);
   const workbook = await loadWorkbookTemplate(XLSX, "/templates/roofbook-budget-template.xlsx");
   const names = propertyNameMap(snapshot.properties);
   const years = availableFinancialYears(snapshot.income, snapshot.expenses);
@@ -199,7 +200,10 @@ export async function exportBudgetWorkbook(): Promise<void> {
     occupied.add(exportName);
   }
 
-  XLSX.writeFile(workbook, "roofbook-budgeting-costs.xlsx", { compression: true, bookType: "xlsx" });
+  XLSX.writeFile(workbook, `roofbook-budgeting-costs${currency ? `-${currency.toLowerCase()}` : ""}.xlsx`, {
+    compression: true,
+    bookType: "xlsx"
+  });
 }
 
 export async function downloadCsv(rows: SheetRow[], filename: string): Promise<void> {
@@ -427,26 +431,28 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
   ];
 }
 
-export async function exportPortfolioWorkbook(fy?: number): Promise<void> {
-  const snapshot = await loadSnapshot();
-  const suffix = fy ? financialYearLabel(fy).replace("/", "-") : "all-time";
-  await downloadWorkbook(buildSheets(snapshot, fy), `roofbook-${suffix}.xlsx`);
+export async function exportPortfolioWorkbook(fy?: number, currency?: CurrencyCode): Promise<void> {
+  const snapshot = await loadSnapshot(currency);
+  await downloadWorkbook(buildSheets(snapshot, fy), `roofbook-${fileSuffix(fy, currency)}.xlsx`);
 }
 
-export async function exportSingleSheet(sheetName: string, fy?: number): Promise<void> {
-  const snapshot = await loadSnapshot();
+export async function exportSingleSheet(sheetName: string, fy?: number, currency?: CurrencyCode): Promise<void> {
+  const snapshot = await loadSnapshot(currency);
   const sheet = buildSheets(snapshot, fy).find((item) => item.name === sheetName);
   if (!sheet) return;
-  const suffix = fy ? financialYearLabel(fy).replace("/", "-") : "all-time";
-  await downloadWorkbook([sheet], `roofbook-${slug(sheetName)}-${suffix}.xlsx`);
+  await downloadWorkbook([sheet], `roofbook-${slug(sheetName)}-${fileSuffix(fy, currency)}.xlsx`);
 }
 
-export async function exportSingleSheetCsv(sheetName: string, fy?: number): Promise<void> {
-  const snapshot = await loadSnapshot();
+export async function exportSingleSheetCsv(sheetName: string, fy?: number, currency?: CurrencyCode): Promise<void> {
+  const snapshot = await loadSnapshot(currency);
   const sheet = buildSheets(snapshot, fy).find((item) => item.name === sheetName);
   if (!sheet) return;
-  const suffix = fy ? financialYearLabel(fy).replace("/", "-") : "all-time";
-  await downloadCsv(sheet.rows, `roofbook-${slug(sheetName)}-${suffix}.csv`);
+  await downloadCsv(sheet.rows, `roofbook-${slug(sheetName)}-${fileSuffix(fy, currency)}.csv`);
+}
+
+function fileSuffix(fy?: number, currency?: CurrencyCode): string {
+  const period = fy ? financialYearLabel(fy).replace("/", "-") : "all-time";
+  return currency ? `${currency.toLowerCase()}-${period}` : period;
 }
 
 function slug(value: string): string {

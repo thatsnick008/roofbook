@@ -21,15 +21,8 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  {
-    href: "/",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    description: "Portfolio overview",
-    mobile: true
-  },
   { href: "/properties", label: "Properties", icon: Building2, description: "Assets & purchase details", mobile: true },
-  { href: "/calculator", label: "Calculator", icon: Calculator, description: "Purchase & holding cost estimates" },
+  { href: "/calculator", label: "Calculator", icon: Calculator, description: "Purchase & holding cost estimates", mobile: true },
   { href: "/finance", label: "Finance & Offset", icon: Banknote, description: "Loans, rates & interest" },
   { href: "/income", label: "Income", icon: Wallet, description: "Rent, arrears & vacancy", mobile: true },
   { href: "/expenses", label: "Expenses", icon: Receipt, description: "Holding costs & deductions", mobile: true },

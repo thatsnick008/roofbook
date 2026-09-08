@@ -9,8 +9,7 @@ import { navItems } from "@/lib/nav";
 import { cn, initials } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { useTheme } from "@/components/providers/ThemeProvider";
-import { useCurrencyFilter, type CurrencyFilter } from "@/components/providers/CurrencyProvider";
-import { usePortfolioCurrencies } from "@/hooks/useData";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { currencies } from "@/lib/options";
 import { SyncIndicator } from "./SyncIndicator";
 import { CommandPalette } from "./CommandPalette";
@@ -20,6 +19,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { SIGNED_IN_KEY } from "./AuthGate";
+import type { CurrencyCode } from "@/lib/types";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -72,7 +72,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative z-10 flex min-h-screen">
       <aside className="no-print sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col border-r border-border bg-surface/70 backdrop-blur-xl lg:flex">
-        <div className="flex items-center gap-3 px-5 py-6">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-5 py-6 transition hover:opacity-80"
+          aria-label="Dashboard"
+          title="Dashboard"
+        >
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white shadow-[0_10px_24px_-12px_rgb(var(--brand))]">
             <Building2 size={20} />
           </div>
@@ -80,7 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <p className="text-sm font-bold leading-tight text-brand">Roofbook</p>
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted">v{APP_VERSION}</p>
           </div>
-        </div>
+        </Link>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {navItems.map((item) => (
@@ -113,8 +118,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-bg/80 px-4 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-xl sm:px-6 sm:pt-2">
-          <div className="flex items-center gap-2 lg:hidden">
+        <header className="no-print sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-bg/80 px-4 pb-2 pt-[calc(max(env(safe-area-inset-top),0.5rem)+0.5rem)] backdrop-blur-xl sm:px-6 lg:pt-2">
+          <Link href="/" className="flex items-center gap-2 lg:hidden" aria-label="Dashboard">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-white">
               <Building2 size={18} />
             </div>
@@ -122,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-sm font-bold leading-tight">Roofbook</p>
               <p className="text-[9px] font-medium uppercase tracking-wider text-muted">v{APP_VERSION}</p>
             </div>
-          </div>
+          </Link>
 
           <button
             onClick={() => setPaletteOpen(true)}
@@ -133,6 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
 
           <div className="flex items-center gap-2">
+            <CurrencyScopePicker compact className="lg:hidden" />
             <SyncIndicator />
             <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={toggle} aria-label="Toggle theme">
               {resolved === "dark" ? <Sun size={18} /> : <Moon size={18} />}
@@ -159,7 +165,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-        <div className="grid grid-cols-5">
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}>
           {mobileItems.map((item) => (
             <Link
               key={item.href}
@@ -208,27 +214,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 /** Scopes the whole app to one currency for this browser session only — never persisted to settings. */
-function CurrencyScopePicker() {
-  const { currency, setCurrency } = useCurrencyFilter();
-  const available = usePortfolioCurrencies();
+function CurrencyScopePicker({ compact, className }: { compact?: boolean; className?: string }) {
+  const { currency, setCurrency, available } = useCurrencyFilter();
   const labels = new Map(currencies.map((item) => [item.code, item.label] as const));
-  const options = currency === "all" || available.includes(currency) ? available : [...available, currency];
 
-  if (available.length < 2 && currency === "all") return null;
+  if (available.length < 2) return null;
+
+  const select = (
+    <Select
+      value={currency}
+      onChange={(event) => setCurrency(event.target.value as CurrencyCode)}
+      className={compact ? "h-11 w-[92px] px-2.5 text-sm font-semibold" : undefined}
+      aria-label="Currency view"
+    >
+      {available.map((code) => (
+        <option key={code} value={code}>
+          {compact ? code : labels.get(code) ?? code}
+        </option>
+      ))}
+    </Select>
+  );
+
+  if (compact) return <div className={className}>{select}</div>;
 
   return (
-    <label className="block">
+    <label className={cn("block", className)}>
       <span className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
         <Coins size={12} /> Currency view
       </span>
-      <Select value={currency} onChange={(event) => setCurrency(event.target.value as CurrencyFilter)}>
-        <option value="all">All currencies</option>
-        {options.map((code) => (
-          <option key={code} value={code}>
-            {labels.get(code) ?? code}
-          </option>
-        ))}
-      </Select>
+      {select}
     </label>
   );
 }

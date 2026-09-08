@@ -17,7 +17,8 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Roofbook",
-    statusBarStyle: "black-translucent"
+    // "default" keeps iOS from drawing the app underneath the status bar and camera cutout.
+    statusBarStyle: "default"
   },
   formatDetection: { telephone: false }
 };

@@ -9,12 +9,14 @@ import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
 import { Input, Select } from "@/components/ui/Field";
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { usePortfolio } from "@/hooks/useData";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { compactMoney, money, percent, titleise } from "@/lib/format";
 import { exportSingleSheet } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
 import { propertyStatuses } from "@/lib/options";
 
 export default function PropertiesPage() {
+  const { currency } = useCurrencyFilter();
   const { metrics } = usePortfolio();
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
@@ -47,7 +49,7 @@ export default function PropertiesPage() {
         actions={
           <>
             {EXPORTS_ENABLED ? (
-              <Button variant="secondary" onClick={() => exportSingleSheet("Properties")}>
+              <Button variant="secondary" onClick={() => exportSingleSheet("Properties", undefined, currency)}>
                 <Download size={16} /> Excel
               </Button>
             ) : null}

@@ -20,6 +20,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { CashflowChart, CategoryDonut, EquityTrend } from "@/components/charts/Charts";
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { groupByMonth, sum } from "@/lib/calc";
 import { compactMoney, compactMoneyPerPeriod, daysUntil, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
@@ -35,6 +36,7 @@ const EMPTY_REMINDERS: Reminder[] = [];
 
 export default function DashboardPage() {
   const toast = useToast();
+  const { currency } = useCurrencyFilter();
   const { loading, metrics, totals, totalsByCurrency } = usePortfolio();
   const income = useIncome() ?? EMPTY_INCOME;
   const expenses = useExpenses() ?? EMPTY_EXPENSES;
@@ -110,11 +112,11 @@ export default function DashboardPage() {
     <>
       <PageHeader
         title="Roofbook"
-        subtitle={`${totals.properties} ${totals.properties === 1 ? "property" : "properties"} across ${currencyGroups.length} ${currencyGroups.length === 1 ? "currency" : "currencies"}`}
+        subtitle={`${totals.properties} ${totals.properties === 1 ? "property" : "properties"}`}
         actions={
           <>
             {EXPORTS_ENABLED ? (
-              <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
+              <Button variant="secondary" onClick={() => exportPortfolioWorkbook(undefined, currency)}>
                 <Download size={16} /> Export Excel
               </Button>
             ) : null}

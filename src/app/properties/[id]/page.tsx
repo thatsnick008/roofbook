@@ -92,7 +92,7 @@ export default function PropertyDetailPage() {
               <Plus size={16} /> Add entry
             </Button>
             {EXPORTS_ENABLED ? (
-              <Button variant="secondary" onClick={() => exportPortfolioWorkbook()}>
+              <Button variant="secondary" onClick={() => exportPortfolioWorkbook(undefined, data.property.currency)}>
                 <Download size={16} /> Excel
               </Button>
             ) : null}
