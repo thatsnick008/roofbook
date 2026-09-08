@@ -16,6 +16,7 @@ import { APP_VERSION } from "@/lib/version";
 import { Modal } from "@/components/ui/Modal";
 import { Field, Input } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
+import { SIGNED_IN_KEY } from "./AuthGate";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -56,6 +57,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     toast("Account details updated");
     setAccount((current) => ({ ...current, password: "" }));
     setAccountOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    setAccountOpen(false);
+    // Drop the offline-access grant so a signed-out device can't reopen the local copy.
+    window.localStorage.removeItem(SIGNED_IN_KEY);
+    await signOut({ callbackUrl: "/" });
   };
 
   return (
@@ -186,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Input type="password" minLength={8} value={account.password} onChange={(event) => setAccount((current) => ({ ...current, password: event.target.value }))} />
           </Field>
           <div className="grid gap-2 sm:grid-cols-2">
-            <Button type="button" variant="secondary" onClick={() => signOut()}>Sign out</Button>
+            <Button type="button" variant="secondary" onClick={() => void handleSignOut()}>Sign out</Button>
             <Button type="submit" disabled={accountSaving}>{accountSaving ? "Saving…" : "Save account details"}</Button>
           </div>
         </form>

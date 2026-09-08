@@ -7,7 +7,7 @@ import { AlertTriangle, Building2, CloudOff, Eye, EyeOff, ShieldCheck, WifiOff }
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 
-const SIGNED_IN_KEY = "pcc-has-signed-in";
+export const SIGNED_IN_KEY = "pcc-has-signed-in";
 
 const ERROR_MESSAGES: Record<string, string> = {
   Configuration: "Sign-in is temporarily unavailable. Please try again shortly.",
