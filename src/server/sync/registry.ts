@@ -24,6 +24,8 @@ const propertySchema = z.object({
   currentValuation: money,
   annualDepreciation: money,
   managementFeePercent: z.number().finite().min(0).max(100).default(5.5),
+  managementFeeType: z.enum(["percent", "fixed"]).default("percent"),
+  managementFeeFixed: money,
   annualRent: money,
   rentFrequency: z.enum(["weekly", "fortnightly", "monthly"]).default("monthly"),
   currency: z.enum(["AUD", "USD", "INR", "GBP", "EUR", "NZD", "SGD", "CAD"]).default("AUD"),

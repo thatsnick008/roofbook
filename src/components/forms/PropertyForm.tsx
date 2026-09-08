@@ -4,12 +4,19 @@ import * as React from "react";
 import { db, nowIso, uid } from "@/lib/db";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, MoneyInput, Select, Textarea } from "@/components/ui/Field";
+import { Field, Input, MoneyInput, Select, Textarea, Toggle } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { accentPalette, australianStates, currencies, propertyStatuses, propertyTypes, rentFrequencies } from "@/lib/options";
 import { titleise, todayIso, money, cn } from "@/lib/format";
-import { totalCapitalRequired } from "@/lib/calc";
-import type { CurrencyCode, Loan, Property, PurchaseDetails, PropertyTaxTreatment, RentFrequency } from "@/lib/types";
+import {
+  currentFinancialYear,
+  financialYearLabel,
+  managementFeeFor,
+  rentAmountPerPeriod,
+  rentPeriodsInFinancialYear,
+  totalCapitalRequired
+} from "@/lib/calc";
+import type { CurrencyCode, IncomeEntry, Loan, Property, PurchaseDetails, PropertyTaxTreatment, RentFrequency } from "@/lib/types";
 
 const emptyProperty = (): Property => ({
   id: uid(),
@@ -28,6 +35,8 @@ const emptyProperty = (): Property => ({
   currentValuation: 0,
   annualDepreciation: 0,
   managementFeePercent: 5.5,
+  managementFeeType: "percent",
+  managementFeeFixed: 0,
   annualRent: 0,
   rentFrequency: "monthly",
   currency: "AUD",
@@ -76,6 +85,41 @@ const emptyLoan = (propertyId: string): Loan => ({
 
 const steps = ["Property", "Purchase", "Finance"] as const;
 
+function periodsPerYear(frequency: RentFrequency): number {
+  return frequency === "weekly" ? 52 : frequency === "fortnightly" ? 26 : 12;
+}
+
+/** Fills in any periods of the current FY that don't already have a rent record, so new schedules show up as pending. */
+async function generatePendingRentSchedule(property: Property): Promise<void> {
+  const periods = rentPeriodsInFinancialYear(property.rentFrequency, currentFinancialYear());
+  const existing = await db.income
+    .where("propertyId")
+    .equals(property.id)
+    .and((entry) => entry.category === "rent")
+    .toArray();
+  const existingStarts = new Set(existing.map((entry) => entry.periodStart));
+  const missing = periods.filter((period) => !existingStarts.has(period.start));
+  if (!missing.length) return;
+
+  const stamp = nowIso();
+  const amount = rentAmountPerPeriod(property);
+  await db.income.bulkAdd(
+    missing.map((period): IncomeEntry => ({
+      id: uid(),
+      propertyId: property.id,
+      date: period.end,
+      periodStart: period.start,
+      periodEnd: period.end,
+      category: "rent",
+      status: "pending",
+      amount,
+      managementFee: managementFeeFor(property, amount),
+      createdAt: stamp,
+      updatedAt: stamp
+    }))
+  );
+}
+
 export function PropertyForm({
   open,
   onClose,
@@ -90,6 +134,8 @@ export function PropertyForm({
   const [property, setProperty] = React.useState<Property>(emptyProperty);
   const [purchase, setPurchase] = React.useState<PurchaseDetails>(() => emptyPurchase(property.id));
   const [loan, setLoan] = React.useState<Loan>(() => emptyLoan(property.id));
+  const [knowsRent, setKnowsRent] = React.useState(false);
+  const fy = currentFinancialYear();
 
   React.useEffect(() => {
     if (!open) return;
@@ -104,11 +150,13 @@ export function PropertyForm({
         if (existing) setProperty(existing);
         setPurchase(existingPurchase ?? emptyPurchase(propertyId));
         setLoan(existingLoan ?? emptyLoan(propertyId));
+        setKnowsRent(Boolean(existing?.annualRent));
       } else {
         const fresh = emptyProperty();
         setProperty(fresh);
         setPurchase(emptyPurchase(fresh.id));
         setLoan(emptyLoan(fresh.id));
+        setKnowsRent(false);
       }
     })();
   }, [open, propertyId]);
@@ -124,15 +172,18 @@ export function PropertyForm({
       return;
     }
     const stamp = nowIso();
+    const finalProperty: Property = {
+      ...property,
+      currentValuation: property.currentValuation || purchase.valuation || purchase.purchasePrice,
+      annualRent: knowsRent ? property.annualRent : 0,
+      updatedAt: stamp
+    };
     await db.transaction("rw", [db.properties, db.purchases, db.loans], async () => {
-      await db.properties.put({
-        ...property,
-        currentValuation: property.currentValuation || purchase.valuation || purchase.purchasePrice,
-        updatedAt: stamp
-      });
+      await db.properties.put(finalProperty);
       await db.purchases.put({ ...purchase, propertyId: property.id, updatedAt: stamp });
       await db.loans.put({ ...loan, propertyId: property.id, updatedAt: stamp });
     });
+    if (knowsRent && finalProperty.annualRent > 0) await generatePendingRentSchedule(finalProperty);
     toast(propertyId ? "Property updated" : "Property added to portfolio");
     onClose();
   };
@@ -285,32 +336,81 @@ export function PropertyForm({
               onValueChange={(value) => patchProperty({ annualDepreciation: value })}
             />
           </Field>
-          <Field label="Annual rent" hint="Used to create weekly, fortnightly or monthly rent records.">
-            <MoneyInput
-              value={property.annualRent}
-              currency={property.currency}
-              onValueChange={(value) => patchProperty({ annualRent: value })}
+          <Field label="Estimated rent" className="sm:col-span-2">
+            <Toggle
+              checked={knowsRent}
+              onChange={setKnowsRent}
+              label={`Do you know the estimated rent for ${financialYearLabel(fy)}?`}
             />
           </Field>
-          <Field label="Rent frequency">
-            <Select value={property.rentFrequency} onChange={(event) => patchProperty({ rentFrequency: event.target.value as RentFrequency })}>
-              {rentFrequencies.map((frequency) => (
-                <option key={frequency} value={frequency}>
-                  {titleise(frequency)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Management fee %" hint="Default rate suggested when recording future income.">
-            <Input
-              type="number"
-              step="0.1"
-              min="0"
-              max="100"
-              value={property.managementFeePercent}
-              onChange={(event) => patchProperty({ managementFeePercent: Number(event.target.value) })}
-            />
-          </Field>
+          {knowsRent ? (
+            <>
+              <Field label="Rent frequency">
+                <Select
+                  value={property.rentFrequency}
+                  onChange={(event) => patchProperty({ rentFrequency: event.target.value as RentFrequency })}
+                >
+                  {rentFrequencies.map((frequency) => (
+                    <option key={frequency} value={frequency}>
+                      {titleise(frequency)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label={`Rent per ${property.rentFrequency.replace("ly", "")}`}
+                hint={`Generates pending ${financialYearLabel(fy)} rent entries you mark as paid when received.`}
+              >
+                <MoneyInput
+                  value={rentAmountPerPeriod(property)}
+                  currency={property.currency}
+                  onValueChange={(value) =>
+                    patchProperty({ annualRent: Math.round(value * periodsPerYear(property.rentFrequency) * 100) / 100 })
+                  }
+                />
+              </Field>
+              <Field label="Management fee" hint="Percentage of rent, or a flat fee per period." className="sm:col-span-2">
+                <div className="space-y-2">
+                  <div className="flex max-w-xs gap-1 rounded-xl border border-border bg-bg/50 p-1">
+                    {(
+                      [
+                        ["percent", "%"],
+                        ["fixed", "$"]
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => patchProperty({ managementFeeType: mode })}
+                        className={cn(
+                          "flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition",
+                          property.managementFeeType === mode ? "bg-brand text-white" : "text-muted hover:text-fg"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {property.managementFeeType === "fixed" ? (
+                    <MoneyInput
+                      value={property.managementFeeFixed}
+                      currency={property.currency}
+                      onValueChange={(value) => patchProperty({ managementFeeFixed: value })}
+                    />
+                  ) : (
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={property.managementFeePercent}
+                      onChange={(event) => patchProperty({ managementFeePercent: Number(event.target.value) })}
+                    />
+                  )}
+                </div>
+              </Field>
+            </>
+          ) : null}
           <Field
             label="Gearing treatment"
             hint="A loss can offset your other income, or be held within this property per current negative-gearing rules."

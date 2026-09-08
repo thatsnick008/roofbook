@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useProperties } from "@/hooks/useData";
 import { incomeCategories, incomeStatuses } from "@/lib/options";
 import { titleise, todayIso, money } from "@/lib/format";
+import { managementFeeFor, rentAmountPerPeriod } from "@/lib/calc";
 import type { IncomeEntry, Property } from "@/lib/types";
 
 export function IncomeForm({
@@ -33,7 +34,8 @@ export function IncomeForm({
     if (!open) return;
     const property = properties.find((item) => item.id === (defaultPropertyId ?? properties[0]?.id));
     setForm(entry ?? blank(defaultPropertyId ?? properties[0]?.id, property));
-    setFeeMode("percent");
+    const mode = !entry && property?.managementFeeType === "fixed" ? "amount" : "percent";
+    setFeeMode(mode);
     setFeePercent(
       entry && entry.amount > 0
         ? Math.round((entry.managementFee / entry.amount) * 1000) / 10
@@ -53,13 +55,15 @@ export function IncomeForm({
 
   const selectProperty = (propertyId: string) => {
     patch({ propertyId });
-    if (feeMode === "percent") {
-      const property = properties.find((item) => item.id === propertyId);
+    const property = properties.find((item) => item.id === propertyId);
+    if (!entry && property?.annualRent) {
+      const amount = rentAmountPerPeriod(property);
+      const fee = managementFeeFor(property, amount);
+      patch({ amount, managementFee: fee });
+      setFeeMode(property.managementFeeType === "fixed" ? "amount" : "percent");
+      setFeePercent(property.managementFeePercent ?? 5.5);
+    } else if (feeMode === "percent") {
       setFeePercent(property?.managementFeePercent ?? 5.5);
-      if (!entry && property?.annualRent) {
-        const amount = rentAmount(property);
-        patch({ amount, managementFee: Math.round(amount * ((property.managementFeePercent ?? 0) / 100) * 100) / 100 });
-      }
     }
   };
 
@@ -190,14 +194,8 @@ export function IncomeForm({
   );
 }
 
-function rentAmount(property?: Property): number {
-  if (!property?.annualRent) return 0;
-  const divisor = property.rentFrequency === "weekly" ? 52 : property.rentFrequency === "fortnightly" ? 26 : 12;
-  return Math.round((property.annualRent / divisor) * 100) / 100;
-}
-
 function blank(propertyId?: string, property?: Property): IncomeEntry {
-  const amount = rentAmount(property);
+  const amount = property?.annualRent ? rentAmountPerPeriod(property) : 0;
   return {
     id: uid(),
     propertyId: propertyId ?? "",
@@ -205,7 +203,7 @@ function blank(propertyId?: string, property?: Property): IncomeEntry {
     category: "rent",
     status: "received",
     amount,
-    managementFee: property ? Math.round(amount * ((property.managementFeePercent ?? 0) / 100) * 100) / 100 : 0,
+    managementFee: property ? managementFeeFor(property, amount) : 0,
     createdAt: nowIso()
   };
 }

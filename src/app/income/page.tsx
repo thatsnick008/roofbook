@@ -11,7 +11,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { IncomeForm } from "@/components/forms/IncomeForm";
 import { useExpenses, useIncome, useProperties } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
-import { availableFinancialYears, financialYearLabel, inFinancialYear, sum } from "@/lib/calc";
+import { availableFinancialYears, financialYearLabel, inFinancialYear, managementFeeFor, rentAmountPerPeriod, sum } from "@/lib/calc";
 import { formatDate, money, titleise } from "@/lib/format";
 import { exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
@@ -248,6 +248,19 @@ export default function IncomePage() {
                       <td className="text-right font-semibold">{money(entry.amount - entry.managementFee, true)}</td>
                       <td className="text-right">
                         <div className="flex justify-end gap-1">
+                          {entry.status === "pending" ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Mark paid"
+                              onClick={async () => {
+                                await db.income.put({ ...entry, status: "received", updatedAt: nowIso() });
+                                toast("Rent marked paid");
+                              }}
+                            >
+                              <CalendarCheck size={15} className="text-positive" />
+                            </Button>
+                          ) : null}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -308,7 +321,7 @@ function currentRentPeriod(frequency: Property["rentFrequency"]): { start: strin
 }
 
 function rentEntry(property: Property, period: { start: string; end: string }): IncomeEntry {
-  const amount = rentAmount(property);
+  const amount = rentAmountPerPeriod(property);
   return {
     id: uid(),
     propertyId: property.id,
@@ -318,15 +331,10 @@ function rentEntry(property: Property, period: { start: string; end: string }): 
     category: "rent",
     status: "pending",
     amount,
-    managementFee: Math.round(amount * ((property.managementFeePercent ?? 0) / 100) * 100) / 100,
+    managementFee: managementFeeFor(property, amount),
     createdAt: nowIso(),
     updatedAt: nowIso()
   };
-}
-
-function rentAmount(property: Property): number {
-  const divisor = property.rentFrequency === "weekly" ? 52 : property.rentFrequency === "fortnightly" ? 26 : 12;
-  return Math.round((property.annualRent / divisor) * 100) / 100;
 }
 
 function toIsoDate(date: Date): string {

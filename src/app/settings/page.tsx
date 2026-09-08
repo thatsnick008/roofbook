@@ -53,6 +53,17 @@ export default function SettingsPage() {
     toast("Local cache cleared", "info");
   };
 
+  const backupToGoogleSheets = async () => {
+    try {
+      const response = await fetch("/api/backup/google-sheets", { method: "POST" });
+      const result = await response.json().catch(() => ({ error: "Unexpected response" }));
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "Backup failed");
+      toast("Backed up to Google Sheets");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not back up to Google Sheets", "error");
+    }
+  };
+
   const sendTestEmail = async () => {
     const to = settings?.ownerEmail;
     if (!to) {
@@ -232,7 +243,14 @@ export default function SettingsPage() {
                   <Download size={16} /> Export Excel
                 </Button>
               ) : null}
+              <Button variant="secondary" onClick={backupToGoogleSheets}>
+                <Cloud size={16} /> Backup to Google Sheets
+              </Button>
             </div>
+            <p className="text-xs text-muted">
+              Mirrors properties, purchases, loans, income, expenses, contacts and reminders to a Google Sheet so your
+              data survives even if this database is lost. Requires Google Sheets backup to be configured by an admin.
+            </p>
             <input
               ref={fileRef}
               type="file"

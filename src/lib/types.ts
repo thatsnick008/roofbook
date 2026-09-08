@@ -23,6 +23,8 @@ export interface Property {
   currentValuation: number;
   annualDepreciation: number;
   managementFeePercent: number;
+  managementFeeType: "percent" | "fixed";
+  managementFeeFixed: number;
   annualRent: number;
   rentFrequency: RentFrequency;
   currency: CurrencyCode;

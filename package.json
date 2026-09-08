@@ -22,6 +22,7 @@
     "dexie": "^4.0.8",
     "dexie-react-hooks": "^1.1.7",
     "drizzle-orm": "^0.33.0",
+    "google-auth-library": "^9.14.2",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.446.0",

@@ -45,6 +45,57 @@ export function inFinancialYear(dateIso: string, fy: number, startMonth = FY_STA
   return financialYearOf(dateIso, startMonth) === fy;
 }
 
+/** Flat per-period rent derived from the property's annual estimate and billing frequency. */
+export function rentAmountPerPeriod(property: Pick<Property, "annualRent" | "rentFrequency">): number {
+  const divisor = property.rentFrequency === "weekly" ? 52 : property.rentFrequency === "fortnightly" ? 26 : 12;
+  return Math.round((property.annualRent / divisor) * 100) / 100;
+}
+
+export function managementFeeFor(
+  property: Pick<Property, "managementFeeType" | "managementFeeFixed" | "managementFeePercent">,
+  amount: number
+): number {
+  if (property.managementFeeType === "fixed") {
+    return Math.round((property.managementFeeFixed ?? 0) * 100) / 100;
+  }
+  return Math.round(amount * ((property.managementFeePercent ?? 0) / 100) * 100) / 100;
+}
+
+/** Splits a financial year into weekly/fortnightly/monthly billing periods for a rent schedule. */
+export function rentPeriodsInFinancialYear(
+  frequency: Property["rentFrequency"],
+  fy: number,
+  startMonth = FY_START_MONTH
+): { start: string; end: string }[] {
+  const { start, end } = financialYearRange(fy, startMonth);
+  const fyEnd = new Date(`${end}T00:00:00.000Z`);
+  const periods: { start: string; end: string }[] = [];
+  let cursor = new Date(`${start}T00:00:00.000Z`);
+
+  while (cursor <= fyEnd) {
+    let periodEnd: Date;
+    if (frequency === "monthly") {
+      periodEnd = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    } else if (frequency === "weekly") {
+      periodEnd = new Date(cursor);
+      periodEnd.setUTCDate(cursor.getUTCDate() + 6);
+    } else {
+      periodEnd = new Date(cursor);
+      periodEnd.setUTCDate(cursor.getUTCDate() + 13);
+    }
+    if (periodEnd > fyEnd) periodEnd = fyEnd;
+    periods.push({ start: toIsoDate(cursor), end: toIsoDate(periodEnd) });
+    cursor = new Date(periodEnd);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return periods;
+}
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 export function totalCapitalRequired(purchase?: PurchaseDetails, loan?: Loan): number {
   if (!purchase) return 0;
   const ancillaryCosts =

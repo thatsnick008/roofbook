@@ -41,6 +41,8 @@ export const properties = pgTable(
     currentValuation: doublePrecision("current_valuation").notNull().default(0),
     annualDepreciation: doublePrecision("annual_depreciation").notNull().default(0),
     managementFeePercent: doublePrecision("management_fee_percent").notNull().default(5.5),
+    managementFeeType: text("management_fee_type").notNull().default("percent"),
+    managementFeeFixed: doublePrecision("management_fee_fixed").notNull().default(0),
     annualRent: doublePrecision("annual_rent").notNull().default(0),
     rentFrequency: text("rent_frequency").notNull().default("monthly"),
     currency: text("currency").notNull().default("AUD"),
