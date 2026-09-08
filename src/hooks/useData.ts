@@ -1,48 +1,103 @@
 "use client";
 
+import * as React from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSettings } from "@/lib/db";
 import { propertyMetrics, portfolioTotals, type PropertyMetrics } from "@/lib/calc";
-import type { AppSettings, CurrencyCode, PortfolioTotals } from "@/lib/types";
+import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
+import type { AppSettings, CurrencyCode, PortfolioTotals, Property } from "@/lib/types";
+
+export const DEFAULT_CURRENCY: CurrencyCode = "AUD";
+
+export const currencyOf = (property: Pick<Property, "currency">): CurrencyCode => property.currency ?? DEFAULT_CURRENCY;
+
+/** Every currency present in the portfolio, ignoring the active filter so the picker never hides itself. */
+export function usePortfolioCurrencies(): CurrencyCode[] {
+  const properties = useLiveQuery(() => db.properties.toArray(), [], undefined);
+  return React.useMemo(() => [...new Set((properties ?? []).map(currencyOf))].sort(), [properties]);
+}
+
+interface CurrencyScope {
+  active: boolean;
+  ids: Set<string>;
+}
+
+/** Resolves the session currency filter to the set of property ids every other hook is scoped to. */
+function useCurrencyScope(): CurrencyScope {
+  const { currency } = useCurrencyFilter();
+  const properties = useLiveQuery(() => db.properties.toArray(), [], undefined);
+
+  return React.useMemo(() => {
+    if (currency === "all") return { active: false, ids: new Set<string>() };
+    const ids = new Set(
+      (properties ?? []).filter((property) => currencyOf(property) === currency).map((property) => property.id)
+    );
+    return { active: true, ids };
+  }, [currency, properties]);
+}
+
+function useScopedByProperty<T extends { propertyId: string }>(rows: T[] | undefined): T[] | undefined {
+  const scope = useCurrencyScope();
+  return React.useMemo(
+    () => (rows && scope.active ? rows.filter((row) => scope.ids.has(row.propertyId)) : rows),
+    [rows, scope]
+  );
+}
+
+/** Records without a property are portfolio-wide, so they stay visible under every currency. */
+function useScopedByOptionalProperty<T extends { propertyId?: string }>(rows: T[] | undefined): T[] | undefined {
+  const scope = useCurrencyScope();
+  return React.useMemo(
+    () => (rows && scope.active ? rows.filter((row) => !row.propertyId || scope.ids.has(row.propertyId)) : rows),
+    [rows, scope]
+  );
+}
 
 export function useProperties() {
-  return useLiveQuery(() => db.properties.toArray(), [], undefined);
+  const scope = useCurrencyScope();
+  const properties = useLiveQuery(() => db.properties.toArray(), [], undefined);
+  return React.useMemo(
+    () => (properties && scope.active ? properties.filter((property) => scope.ids.has(property.id)) : properties),
+    [properties, scope]
+  );
 }
 
 export function useIncome(propertyId?: string) {
-  return useLiveQuery(
+  const rows = useLiveQuery(
     () => (propertyId ? db.income.where("propertyId").equals(propertyId).toArray() : db.income.toArray()),
     [propertyId],
     undefined
   );
+  return useScopedByProperty(rows);
 }
 
 export function useExpenses(propertyId?: string) {
-  return useLiveQuery(
+  const rows = useLiveQuery(
     () => (propertyId ? db.expenses.where("propertyId").equals(propertyId).toArray() : db.expenses.toArray()),
     [propertyId],
     undefined
   );
+  return useScopedByProperty(rows);
 }
 
 export function useLoans() {
-  return useLiveQuery(() => db.loans.toArray(), [], undefined);
+  return useScopedByProperty(useLiveQuery(() => db.loans.toArray(), [], undefined));
 }
 
 export function usePurchases() {
-  return useLiveQuery(() => db.purchases.toArray(), [], undefined);
+  return useScopedByProperty(useLiveQuery(() => db.purchases.toArray(), [], undefined));
 }
 
 export function useReminders() {
-  return useLiveQuery(() => db.reminders.orderBy("dueDate").toArray(), [], undefined);
+  return useScopedByOptionalProperty(useLiveQuery(() => db.reminders.orderBy("dueDate").toArray(), [], undefined));
 }
 
 export function useContacts() {
-  return useLiveQuery(() => db.contacts.toArray(), [], undefined);
+  return useScopedByOptionalProperty(useLiveQuery(() => db.contacts.toArray(), [], undefined));
 }
 
 export function useDocuments() {
-  return useLiveQuery(() => db.documents.reverse().sortBy("uploadedAt"), [], undefined);
+  return useScopedByOptionalProperty(useLiveQuery(() => db.documents.reverse().sortBy("uploadedAt"), [], undefined));
 }
 
 export function useSettings(): AppSettings | undefined {
@@ -79,9 +134,12 @@ export function usePortfolio(): PortfolioSnapshot {
           )
       : [];
 
-  const totalsByCurrency = [...new Set(metrics.map((metric) => metric.property.currency ?? "AUD"))]
+  const totalsByCurrency = [...new Set(metrics.map((metric) => currencyOf(metric.property)))]
     .sort()
-    .map((currency) => ({ currency, ...portfolioTotals(metrics.filter((metric) => (metric.property.currency ?? "AUD") === currency)) }));
+    .map((currency) => ({
+      currency,
+      ...portfolioTotals(metrics.filter((metric) => currencyOf(metric.property) === currency))
+    }));
 
   return { loading: !ready, metrics, totals: portfolioTotals(metrics), totalsByCurrency };
 }

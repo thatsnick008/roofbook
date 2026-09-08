@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Migration SQL is read at runtime by ensureSchema(), so it must ship with the functions.
+    outputFileTracingIncludes: { "/api/**": ["./drizzle/**"] }
+  },
   async headers() {
     return [
       {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Cloud, CloudUpload, Database, Download, HardDrive, Mail, Moon, Palette, RefreshCw, Sparkles, Sun, Trash2, Upload } from "lucide-react";
+import { Cloud, CloudUpload, Database, Download, HardDrive, History, Mail, Moon, Palette, RefreshCw, RotateCcw, Sparkles, Sun, Trash2, Upload } from "lucide-react";
 import { clearAllData, saveSettings } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -14,7 +14,7 @@ import { exportBackup, importBackup } from "@/lib/export/backup";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
 import { seedDemoData } from "@/lib/seed";
-import { formatDate, cn } from "@/lib/format";
+import { formatDate, cn, titleise } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
 import { APP_VERSION } from "@/lib/version";
 
@@ -264,7 +264,108 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+
+        <VersionHistoryCard />
       </div>
     </>
+  );
+}
+
+interface Revision {
+  table: string;
+  recordId: string;
+  version: number;
+  label: string;
+  createdAt: string;
+}
+
+function VersionHistoryCard() {
+  const toast = useToast();
+  const { sync } = useSync();
+  const [revisions, setRevisions] = React.useState<Revision[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [restoring, setRestoring] = React.useState<string>();
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/revisions");
+      const result = await response.json().catch(() => ({}));
+      setRevisions(response.ok && result.ok ? result.revisions : []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  const restore = async (revision: Revision) => {
+    const key = `${revision.table}:${revision.recordId}:${revision.version}`;
+    if (!window.confirm(`Restore "${revision.label}" to version ${revision.version}? The current values are kept as a new version.`)) return;
+
+    setRestoring(key);
+    const response = await fetch("/api/revisions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ table: revision.table, recordId: revision.recordId, version: revision.version })
+    });
+    const result = await response.json().catch(() => ({}));
+    setRestoring(undefined);
+
+    if (!response.ok || !result.ok) {
+      toast(result.error ?? "Could not restore that version", "error");
+      return;
+    }
+
+    await sync({ full: true });
+    await load();
+    toast("Version restored");
+  };
+
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader
+        title="Version history"
+        subtitle="The last five versions of every record are kept in the cloud. Restore one to roll the dashboard back."
+        action={<History size={18} className="text-muted" />}
+      />
+      <CardBody className="space-y-2">
+        {loading ? (
+          <p className="py-6 text-center text-sm text-muted">Loading history…</p>
+        ) : revisions.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted">
+            No earlier versions yet. Snapshots are captured whenever a record is edited or deleted.
+          </p>
+        ) : (
+          <div className="max-h-96 space-y-2 overflow-y-auto">
+            {revisions.map((revision) => {
+              const key = `${revision.table}:${revision.recordId}:${revision.version}`;
+              return (
+                <div
+                  key={key}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-bg/50 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{revision.label}</p>
+                    <p className="text-xs text-muted">
+                      {titleise(revision.table)} · v{revision.version} · {formatDate(revision.createdAt)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    disabled={restoring === key}
+                    onClick={() => void restore(revision)}
+                  >
+                    <RotateCcw size={15} /> {restoring === key ? "Restoring…" : "Restore"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardBody>
+    </Card>
   );
 }

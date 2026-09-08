@@ -4,6 +4,7 @@ import * as React from "react";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "./ThemeProvider";
 import { SyncProvider } from "./SyncProvider";
+import { CurrencyProvider } from "./CurrencyProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -58,7 +59,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider refetchOnWindowFocus={false}>
       <ThemeProvider>
         <ToastProvider>
-          <SyncProvider>{children}</SyncProvider>
+          <SyncProvider>
+            <CurrencyProvider>{children}</CurrencyProvider>
+          </SyncProvider>
         </ToastProvider>
       </ThemeProvider>
     </SessionProvider>

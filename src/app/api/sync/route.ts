@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, gt, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/server/db/client";
+import { ensureSchema } from "@/server/db/migrate";
 import { requireUserId } from "@/server/session";
-import { recordRevisions, userSettings } from "@/server/db/schema";
+import { userSettings } from "@/server/db/schema";
 import { registry, registryKeys, syncRequestSchema, type RegistryKey } from "@/server/sync/registry";
+import { snapshotRevision } from "@/server/sync/revisions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/** Every overwritten or deleted row is snapshotted first, capped at this many versions per record. */
-const MAX_REVISIONS = 5;
 
 type Row = Record<string, any>;
 
@@ -36,11 +35,13 @@ export async function POST(request: Request) {
   }
 
   try {
+    await ensureSchema();
     return await syncChanges(parsed.data, userId);
   } catch (error) {
     console.error("[sync] request failed", error);
+    const code = (error as { code?: string })?.code;
     return NextResponse.json(
-      { ok: false, error: "Cloud sync failed. Apply the latest database migrations and try again." },
+      { ok: false, error: `Cloud sync failed on the server${code ? ` (${code})` : ""}. Check the function logs.` },
       { status: 500 }
     );
   }
@@ -148,52 +149,6 @@ async function pushRows(orm: any, userId: string, key: RegistryKey, incoming: Ro
 
   if (inserts.length) {
     await orm.insert(table).values(inserts);
-  }
-}
-
-async function snapshotRevision(orm: any, userId: string, tableName: RegistryKey, recordId: string, data: Row): Promise<void> {
-  const [latest] = await orm
-    .select({ version: recordRevisions.version })
-    .from(recordRevisions)
-    .where(
-      and(
-        eq(recordRevisions.userId, userId),
-        eq(recordRevisions.tableName, tableName),
-        eq(recordRevisions.recordId, recordId)
-      )
-    )
-    .orderBy(desc(recordRevisions.version))
-    .limit(1);
-
-  await orm.insert(recordRevisions).values({
-    id: crypto.randomUUID(),
-    userId,
-    tableName,
-    recordId,
-    version: (latest?.version ?? 0) + 1,
-    data
-  });
-
-  const stale = await orm
-    .select({ id: recordRevisions.id })
-    .from(recordRevisions)
-    .where(
-      and(
-        eq(recordRevisions.userId, userId),
-        eq(recordRevisions.tableName, tableName),
-        eq(recordRevisions.recordId, recordId)
-      )
-    )
-    .orderBy(desc(recordRevisions.version))
-    .offset(MAX_REVISIONS);
-
-  if (stale.length) {
-    await orm.delete(recordRevisions).where(
-      inArray(
-        recordRevisions.id,
-        stale.map((row: { id: string }) => row.id)
-      )
-    );
   }
 }
 

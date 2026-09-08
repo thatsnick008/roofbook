@@ -4,17 +4,20 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Building2, Command, Moon, Plus, Sun } from "lucide-react";
+import { Building2, Coins, Command, Moon, Plus, Sun } from "lucide-react";
 import { navItems } from "@/lib/nav";
 import { cn, initials } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { useCurrencyFilter, type CurrencyFilter } from "@/components/providers/CurrencyProvider";
+import { usePortfolioCurrencies } from "@/hooks/useData";
+import { currencies } from "@/lib/options";
 import { SyncIndicator } from "./SyncIndicator";
 import { CommandPalette } from "./CommandPalette";
 import { QuickAdd } from "@/components/quick/QuickAdd";
 import { APP_VERSION } from "@/lib/version";
 import { Modal } from "@/components/ui/Modal";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { SIGNED_IN_KEY } from "./AuthGate";
 
@@ -93,6 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="space-y-2 border-t border-border p-3">
+          <CurrencyScopePicker />
           <button
             onClick={() => setPaletteOpen(true)}
             className="flex w-full items-center justify-between rounded-xl border border-border bg-bg/60 px-3 py-2.5 text-sm text-muted transition hover:text-fg"
@@ -200,5 +204,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </form>
       </Modal>
     </div>
+  );
+}
+
+/** Scopes the whole app to one currency for this browser session only — never persisted to settings. */
+function CurrencyScopePicker() {
+  const { currency, setCurrency } = useCurrencyFilter();
+  const available = usePortfolioCurrencies();
+  const labels = new Map(currencies.map((item) => [item.code, item.label] as const));
+  const options = currency === "all" || available.includes(currency) ? available : [...available, currency];
+
+  if (available.length < 2 && currency === "all") return null;
+
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <Coins size={12} /> Currency view
+      </span>
+      <Select value={currency} onChange={(event) => setCurrency(event.target.value as CurrencyFilter)}>
+        <option value="all">All currencies</option>
+        {options.map((code) => (
+          <option key={code} value={code}>
+            {labels.get(code) ?? code}
+          </option>
+        ))}
+      </Select>
+    </label>
   );
 }
