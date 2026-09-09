@@ -23,6 +23,18 @@ type SyncPayload = {
 const changedSince = (row: Row, since?: string): boolean =>
   !since || String(row.updatedAt ?? row.createdAt ?? "") > since;
 
+export async function hasPendingLocalChanges(): Promise<boolean> {
+  const { lastSyncedAt } = await getSyncMeta();
+  if ((await db.tombstones.count()) > 0) return true;
+
+  for (const name of SYNC_TABLES) {
+    const rows = (await db.table(name).toArray()) as Row[];
+    if (rows.some((row) => changedSince(row, lastSyncedAt))) return true;
+  }
+
+  return false;
+}
+
 export async function runSync(options: { full?: boolean; overwrite?: SyncOverwrite } = {}): Promise<SyncResult> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { ok: false, pushed: 0, pulled: 0, error: "offline" };

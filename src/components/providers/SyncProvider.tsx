@@ -4,7 +4,7 @@ import * as React from "react";
 import { useSession } from "next-auth/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getSyncMeta } from "@/lib/db";
-import { runSync, type SyncOverwrite } from "@/lib/sync/engine";
+import { hasPendingLocalChanges, runSync, type SyncOverwrite } from "@/lib/sync/engine";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 
@@ -14,7 +14,7 @@ interface SyncContextValue {
   status: SyncStatus;
   lastSyncedAt?: string;
   error?: string;
-  sync: (options?: { full?: boolean; overwrite?: SyncOverwrite }) => Promise<void>;
+  sync: (options?: { full?: boolean; overwrite?: SyncOverwrite; onlyIfChanged?: boolean }) => Promise<void>;
 }
 
 const SyncContext = React.createContext<SyncContextValue>({
@@ -35,8 +35,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const running = React.useRef(false);
 
   const sync = React.useCallback(
-    async (options: { full?: boolean; overwrite?: SyncOverwrite } = {}) => {
+    async (options: { full?: boolean; overwrite?: SyncOverwrite; onlyIfChanged?: boolean } = {}) => {
       if (sessionStatus !== "authenticated" || running.current) return;
+      if (options.onlyIfChanged && !(await hasPendingLocalChanges())) return;
       running.current = true;
       setStatus("syncing");
       const result = await runSync(options);
@@ -72,11 +73,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    void sync();
-    const interval = setInterval(() => void sync(), AUTO_SYNC_MS);
-    const onOnline = () => void sync();
+    void sync({ onlyIfChanged: true });
+    const interval = setInterval(() => void sync({ onlyIfChanged: true }), AUTO_SYNC_MS);
+    const onOnline = () => void sync({ onlyIfChanged: true });
     const onVisible = () => {
-      if (document.visibilityState === "visible") void sync();
+      if (document.visibilityState === "visible") void sync({ onlyIfChanged: true });
     };
 
     window.addEventListener("online", onOnline);
