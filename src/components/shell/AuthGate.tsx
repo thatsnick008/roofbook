@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { AlertTriangle, Building2, CloudOff, Eye, EyeOff, ShieldCheck, WifiOff } from "lucide-react";
+import { AlertTriangle, Building2, Chrome, CloudOff, Eye, EyeOff, ShieldCheck, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 
@@ -168,6 +168,10 @@ function SignInCard({ initialError, resetToken }: { initialError: string | null;
                 </button>
               ))}
             </div>
+
+            <Button type="button" variant="secondary" className="mb-5 w-full" onClick={() => signIn("google", { callbackUrl: "/" })}>
+              <Chrome size={18} /> Continue with Google
+            </Button>
 
             {mode === "signin" ? (
               <button type="button" className="mb-4 text-left text-sm font-semibold text-brand" onClick={() => setForgot(true)}>
