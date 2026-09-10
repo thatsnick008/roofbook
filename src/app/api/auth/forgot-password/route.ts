@@ -12,7 +12,10 @@ const schema = z.object({ email: z.string().trim().toLowerCase().email().max(200
 
 export async function POST(request: Request) {
   const generic = { ok: true, message: "If an account exists for that email, a reset link has been sent." };
-  if (!isDatabaseConfigured() || !process.env.RESEND_API_KEY) return NextResponse.json(generic);
+  if (!isDatabaseConfigured() || !process.env.RESEND_API_KEY) {
+    console.warn("[forgot-password] Skipped — DATABASE_URL or RESEND_API_KEY is not configured.");
+    return NextResponse.json(generic);
+  }
 
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });

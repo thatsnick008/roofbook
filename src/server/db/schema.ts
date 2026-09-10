@@ -226,6 +226,23 @@ export const userSettings = pgTable("user_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+/** One row per subscribed browser/device so a user can get push reminders on every installed instance. */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    userIdx: index("push_subscriptions_user_idx").on(table.userId),
+    endpointIdx: index("push_subscriptions_endpoint_idx").on(table.endpoint)
+  })
+);
+
 /** Snapshot of a row taken before it's overwritten or deleted, capped at 5 per record so history is never lost. */
 export const recordRevisions = pgTable(
   "record_revisions",
@@ -255,5 +272,6 @@ export const schema = {
   userSettings,
   users,
   passwordResetTokens,
-  recordRevisions
+  recordRevisions,
+  pushSubscriptions
 };

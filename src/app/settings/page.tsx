@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Cloud, CloudUpload, Database, Download, HardDrive, History, Mail, Moon, Palette, RefreshCw, RotateCcw, Sparkles, Sun, Trash2, Upload } from "lucide-react";
+import { Bell, BellOff, Cloud, CloudUpload, Database, Download, HardDrive, History, Mail, Moon, Palette, RefreshCw, RotateCcw, Sparkles, Sun, Trash2, Upload } from "lucide-react";
 import { clearAllData, saveSettings } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, PageHeader } from "@/components/ui/Primitives";
 import { Field, Input, Toggle } from "@/components/ui/Field";
 import { useSettings } from "@/hooks/useData";
+import { usePush } from "@/hooks/usePush";
 import { useSync } from "@/components/providers/SyncProvider";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const { currency } = useCurrencyFilter();
   const { theme, setTheme } = useTheme();
   const { status, lastSyncedAt, error, sync } = useSync();
+  const push = usePush();
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [usage, setUsage] = React.useState<string>("—");
 
@@ -82,6 +84,12 @@ export default function SettingsPage() {
     });
     const result = await response.json().catch(() => ({ error: "Unexpected response" }));
     toast(response.ok ? "Test email sent" : result.error ?? "Could not send email", response.ok ? "success" : "error");
+  };
+
+  const sendTestPush = async () => {
+    const response = await fetch("/api/push/test", { method: "POST" });
+    const result = await response.json().catch(() => ({ error: "Unexpected response" }));
+    toast(response.ok ? "Test push sent" : result.error ?? "Could not send push", response.ok ? "success" : "error");
   };
 
   const updateApp = async () => {
@@ -174,6 +182,49 @@ export default function SettingsPage() {
                 <Mail size={16} /> Send test reminder email
               </Button>
             </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Push notifications"
+            subtitle="Get reminder alerts on this device, even when Roofbook isn't open"
+            action={<Bell size={18} className="text-muted" />}
+          />
+          <CardBody className="space-y-3">
+            {!push.configured ? (
+              <p className="text-sm text-muted">Push notifications aren&apos;t configured for this deployment yet.</p>
+            ) : push.status === "unsupported" ? (
+              <p className="text-sm text-muted">This browser doesn&apos;t support push notifications.</p>
+            ) : push.status === "denied" ? (
+              <p className="text-sm text-negative">
+                Notifications are blocked for this site. Allow them in your browser settings to turn this on.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={push.status === "subscribed" ? "positive" : "warning"}>
+                    {push.status === "subscribed" ? "Enabled on this device" : "Not enabled"}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {push.status === "subscribed" ? (
+                    <Button variant="secondary" disabled={push.loading} onClick={() => void push.unsubscribe()}>
+                      <BellOff size={16} /> Turn off on this device
+                    </Button>
+                  ) : (
+                    <Button disabled={push.loading} onClick={() => void push.subscribe()}>
+                      <Bell size={16} /> Enable push notifications
+                    </Button>
+                  )}
+                  {push.status === "subscribed" ? (
+                    <Button variant="secondary" onClick={sendTestPush}>
+                      <Bell size={16} /> Send test push
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            )}
           </CardBody>
         </Card>
 

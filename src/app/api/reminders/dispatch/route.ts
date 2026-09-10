@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { Resend } from "resend";
 import { getDb, isDatabaseConfigured } from "@/server/db/client";
 import { properties, reminders, userSettings } from "@/server/db/schema";
+import { isPushConfigured, sendPushToUser } from "@/server/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,30 +66,53 @@ export async function GET(request: Request) {
   const preferences = await db.select().from(userSettings);
   const preferenceMap = new Map(preferences.map((row) => [row.userId, row]));
   const resend = apiKey ? new Resend(apiKey) : null;
+  const pushEnabled = isPushConfigured();
   let sent = 0;
+  let pushed = 0;
 
   for (const [userId, bucket] of buckets) {
     const preference = preferenceMap.get(userId);
     if (preference && !preference.remindersEnabled) continue;
 
     const to = bucket.email || preference?.ownerEmail;
-    if (!to || !resend) continue;
+    if (to && resend) {
+      try {
+        await resend.emails.send({
+          from: process.env.REMINDER_FROM_EMAIL ?? "Roofbook <onboarding@resend.dev>",
+          to,
+          subject: `${bucket.items.length} property reminder${bucket.items.length === 1 ? "" : "s"} need attention`,
+          html: renderEmail(bucket.items)
+        });
+        sent += 1;
+      } catch {
+        // Retried on the next scheduled run.
+      }
+    }
 
-    try {
-      await resend.emails.send({
-        from: process.env.REMINDER_FROM_EMAIL ?? "Roofbook <onboarding@resend.dev>",
-        to,
-        subject: `${bucket.items.length} property reminder${bucket.items.length === 1 ? "" : "s"} need attention`,
-        html: renderEmail(bucket.items)
-      });
-      sent += 1;
-    } catch {
-      // Retried on the next scheduled run.
+    if (pushEnabled) {
+      const count = bucket.items.length;
+      const first = bucket.items[0];
+      const body =
+        count === 1
+          ? `${first.title} — ${first.daysAway < 0 ? `${Math.abs(first.daysAway)}d overdue` : `due in ${first.daysAway}d`}`
+          : `${count} reminders need attention`;
+      try {
+        const delivered = await sendPushToUser(userId, {
+          title: "Roofbook reminders",
+          body,
+          url: "/reminders",
+          tag: "roofbook-reminders"
+        });
+        if (delivered > 0) pushed += 1;
+      } catch {
+        // Retried on the next scheduled run.
+      }
     }
   }
 
-  return NextResponse.json({ ok: true, checkedAt: new Date().toISOString(), sent });
+  return NextResponse.json({ ok: true, checkedAt: new Date().toISOString(), sent, pushed });
 }
+
 
 function daysUntil(dateIso: string): number {
   const target = new Date(`${dateIso.slice(0, 10)}T00:00:00Z`);
