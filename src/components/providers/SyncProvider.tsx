@@ -3,10 +3,14 @@
 import * as React from "react";
 import { useSession } from "next-auth/react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { getSyncMeta } from "@/lib/db";
+import { clearAllData, getSyncMeta } from "@/lib/db";
 import { hasPendingLocalChanges, runSync, type SyncOverwrite } from "@/lib/sync/engine";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+
+// Local IndexedDB is a single device-wide cache — without this, switching accounts on the
+// same device would show (and push) the previous account's data until a full sync completed.
+export const LOCAL_OWNER_KEY = "pcc-local-owner-id";
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "offline" | "error" | "signed-out";
 
@@ -27,7 +31,8 @@ export const useSync = () => React.useContext(SyncContext);
 const AUTO_SYNC_MS = 5 * 60 * 1000;
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
   const meta = useLiveQuery(() => getSyncMeta(), [], undefined);
   const [status, setStatus] = React.useState<SyncStatus>("idle");
   const [failureChoiceOpen, setFailureChoiceOpen] = React.useState(false);
@@ -68,12 +73,24 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   );
 
   React.useEffect(() => {
-    if (sessionStatus !== "authenticated") {
+    if (sessionStatus !== "authenticated" || !userId) {
       setStatus(sessionStatus === "loading" ? "idle" : "signed-out");
       return;
     }
 
-    void sync({ onlyIfChanged: true });
+    let cancelled = false;
+    const start = async () => {
+      const previousOwner = window.localStorage.getItem(LOCAL_OWNER_KEY);
+      if (previousOwner && previousOwner !== userId) {
+        // A different account signed in on this device — drop the stale local cache first.
+        await clearAllData();
+      }
+      window.localStorage.setItem(LOCAL_OWNER_KEY, userId);
+      if (cancelled) return;
+      void sync({ full: previousOwner !== userId, onlyIfChanged: previousOwner === userId });
+    };
+    void start();
+
     const interval = setInterval(() => void sync({ onlyIfChanged: true }), AUTO_SYNC_MS);
     const onOnline = () => void sync({ onlyIfChanged: true });
     const onVisible = () => {
@@ -83,11 +100,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      cancelled = true;
       clearInterval(interval);
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [sessionStatus, sync]);
+  }, [sessionStatus, userId, sync]);
 
   const value = React.useMemo(
     () => ({ status, lastSyncedAt: meta?.lastSyncedAt, error: meta?.lastError, sync }),

@@ -19,6 +19,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { SIGNED_IN_KEY } from "./AuthGate";
+import { clearAllData } from "@/lib/db";
+import { LOCAL_OWNER_KEY } from "@/components/providers/SyncProvider";
 import type { CurrencyCode } from "@/lib/types";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -64,8 +66,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     setAccountOpen(false);
-    // Drop the offline-access grant so a signed-out device can't reopen the local copy.
+    // Drop the offline-access grant and local cache so the next account on this device starts clean.
     window.localStorage.removeItem(SIGNED_IN_KEY);
+    window.localStorage.removeItem(LOCAL_OWNER_KEY);
+    await clearAllData();
     await signOut({ callbackUrl: "/" });
   };
 
