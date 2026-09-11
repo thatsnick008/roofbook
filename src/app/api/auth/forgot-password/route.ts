@@ -34,13 +34,16 @@ export async function POST(request: Request) {
   const baseUrl = process.env.NEXTAUTH_URL ?? new URL(request.url).origin;
   const resetUrl = `${baseUrl}/?reset=${token}`;
   try {
-    await new Resend(process.env.RESEND_API_KEY).emails.send({
+    // The Resend SDK returns { data, error } instead of throwing for API-level failures — check `error` explicitly.
+    const { error } = await new Resend(process.env.RESEND_API_KEY).emails.send({
       from: process.env.REMINDER_FROM_EMAIL ?? "Roofbook <onboarding@resend.dev>",
       to: user.email,
       subject: "Reset your Roofbook password",
       html: `<p>We received a request to reset your Roofbook password.</p><p><a href="${resetUrl}">Reset your password</a></p><p>This link expires in 30 minutes.</p>`
     });
-  } catch {
+    if (error) console.error("[forgot-password] Resend rejected the email:", error);
+  } catch (error) {
+    console.error("[forgot-password] Failed to send reset email:", error);
     return NextResponse.json(generic);
   }
 

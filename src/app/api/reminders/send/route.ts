@@ -76,14 +76,20 @@ export async function POST(request: Request) {
 
   try {
     const resend = new Resend(apiKey);
-    await resend.emails.send({
+    // The Resend SDK returns { data, error } instead of throwing for API-level failures — check `error` explicitly.
+    const { error } = await resend.emails.send({
       from: process.env.REMINDER_FROM_EMAIL ?? "Roofbook <onboarding@resend.dev>",
       to,
       subject: `${reminders.length} property reminder${reminders.length === 1 ? "" : "s"} need attention`,
       html
     });
+    if (error) {
+      console.error("[reminders/send] Resend rejected the email:", error);
+      return NextResponse.json({ ok: false, error: error.message ?? "Delivery failed" }, { status: 502 });
+    }
     return NextResponse.json({ ok: true, sent: reminders.length });
-  } catch {
+  } catch (error) {
+    console.error("[reminders/send] Failed to send email:", error);
     return NextResponse.json({ ok: false, error: "Delivery failed" }, { status: 502 });
   }
 }

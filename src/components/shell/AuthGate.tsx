@@ -3,9 +3,10 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { AlertTriangle, Building2, Chrome, CloudOff, Eye, EyeOff, ShieldCheck, WifiOff } from "lucide-react";
+import { AlertTriangle, Chrome, CloudOff, Eye, EyeOff, ShieldCheck, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
+import { Logo } from "@/components/ui/Logo";
 
 export const SIGNED_IN_KEY = "pcc-has-signed-in";
 
@@ -44,9 +45,7 @@ function AuthGateInner({ children }: { children: React.ReactNode }) {
     return (
       <div className="grid min-h-screen place-items-center">
         <div className="flex flex-col items-center gap-3 text-muted">
-          <div className="grid h-12 w-12 animate-pulse place-items-center rounded-2xl bg-brand text-white">
-            <Building2 size={22} />
-          </div>
+          <Logo size={48} className="animate-pulse rounded-2xl" />
           <p className="text-sm">Opening Roofbook…</p>
         </div>
       </div>
@@ -77,7 +76,7 @@ function SignInCard({ initialError, resetToken }: { initialError: string | null;
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
-  const [forgot, setForgot] = React.useState(false);
+  const [forgot, setForgot] = React.useState(Boolean(resetToken));
   const [resetPassword, setResetPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(
     initialError ? (ERROR_MESSAGES[initialError] ?? "Sign-in failed. Please try again.") : null
@@ -141,9 +140,7 @@ function SignInCard({ initialError, resetToken }: { initialError: string | null;
       <div className="w-full max-w-md">
         <div className="card overflow-hidden">
           <div className="bg-gradient-to-br from-brand to-brand/60 px-7 py-8 text-white">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 backdrop-blur">
-              <Building2 size={24} />
-            </div>
+            <Logo size={48} className="rounded-2xl" />
             <h1 className="mt-4 text-2xl font-bold">Roofbook</h1>
             <p className="mt-1 text-sm text-white/80">
               Your portfolio, loans, rent, expenses and tax reporting — synced across every device.
@@ -173,7 +170,7 @@ function SignInCard({ initialError, resetToken }: { initialError: string | null;
               <Chrome size={18} /> Continue with Google
             </Button>
 
-            {mode === "signin" ? (
+            {!forgot ? (
               <button type="button" className="mb-4 text-left text-sm font-semibold text-brand" onClick={() => setForgot(true)}>
                 Forgot password?
               </button>
@@ -181,7 +178,14 @@ function SignInCard({ initialError, resetToken }: { initialError: string | null;
 
             {forgot ? (
               <div className="mb-4 rounded-2xl border border-brand/30 bg-brand/5 p-4">
-                <p className="text-sm font-semibold">{resetToken ? "Choose a new password" : "Reset your password"}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold">{resetToken ? "Choose a new password" : "Reset your password"}</p>
+                  {!resetToken ? (
+                    <button type="button" className="text-xs font-semibold text-muted hover:text-fg" onClick={() => setForgot(false)}>
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-xs text-muted">
                   {resetToken ? "Use at least 8 characters." : "We will email a secure reset link if the account exists."}
                 </p>

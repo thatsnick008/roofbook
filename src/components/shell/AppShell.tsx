@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Building2, Coins, Command, Moon, Plus, Sun } from "lucide-react";
+import { Coins, Command, Moon, Plus, Sun } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 import { navItems } from "@/lib/nav";
 import { cn, initials } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +21,7 @@ import { Field, Input, Select } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { SIGNED_IN_KEY } from "./AuthGate";
 import { clearAllData } from "@/lib/db";
+import { hasPendingLocalChanges } from "@/lib/sync/engine";
 import { LOCAL_OWNER_KEY, useSync } from "@/components/providers/SyncProvider";
 import type { CurrencyCode } from "@/lib/types";
 
@@ -69,6 +71,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setAccountOpen(false);
     // Flush any pending edits (including deletes) before wiping the local cache, or they're lost for good.
     await sync();
+    if (await hasPendingLocalChanges()) {
+      toast("Couldn't sync your latest changes — check your connection and try signing out again.", "error");
+      return;
+    }
     window.localStorage.removeItem(SIGNED_IN_KEY);
     window.localStorage.removeItem(LOCAL_OWNER_KEY);
     await clearAllData();
@@ -84,9 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-label="Dashboard"
           title="Dashboard"
         >
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white shadow-[0_10px_24px_-12px_rgb(var(--brand))]">
-            <Building2 size={20} />
-          </div>
+          <Logo size={40} className="rounded-xl shadow-[0_10px_24px_-12px_rgb(var(--brand))]" />
           <div>
             <p className="text-sm font-bold leading-tight text-brand">Roofbook</p>
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted">v{APP_VERSION}</p>
@@ -126,9 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="no-print sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-bg/80 px-4 pb-2 pt-[calc(max(env(safe-area-inset-top),0.5rem)+0.5rem)] backdrop-blur-xl sm:px-6 lg:pt-2">
           <Link href="/" className="flex items-center gap-2 lg:hidden" aria-label="Dashboard">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-white">
-              <Building2 size={18} />
-            </div>
+            <Logo size={36} className="rounded-xl" />
             <div>
               <p className="text-sm font-bold leading-tight">Roofbook</p>
               <p className="text-[9px] font-medium uppercase tracking-wider text-muted">v{APP_VERSION}</p>

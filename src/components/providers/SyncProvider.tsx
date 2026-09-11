@@ -37,28 +37,42 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState<SyncStatus>("idle");
   const [failureChoiceOpen, setFailureChoiceOpen] = React.useState(false);
   const [failureReason, setFailureReason] = React.useState<string>();
-  const running = React.useRef(false);
+  const inFlight = React.useRef<Promise<void> | null>(null);
 
   const sync = React.useCallback(
     async (options: { full?: boolean; overwrite?: SyncOverwrite; onlyIfChanged?: boolean } = {}) => {
-      if (sessionStatus !== "authenticated" || running.current) return;
-      if (options.onlyIfChanged && !(await hasPendingLocalChanges())) return;
-      running.current = true;
-      setStatus("syncing");
-      const result = await runSync(options);
-      running.current = false;
-      if (result.ok) {
-        setFailureChoiceOpen(false);
-        setFailureReason(undefined);
-        setStatus("synced");
+      if (sessionStatus !== "authenticated") return;
+      // If a sync is already running (e.g. the debounced auto-sync), wait for it instead of
+      // skipping — callers that need pending changes flushed (like sign-out) must not return early.
+      if (inFlight.current) {
+        await inFlight.current;
         return;
       }
+      if (options.onlyIfChanged && !(await hasPendingLocalChanges())) return;
 
-      const nextStatus = result.error === "offline" ? "offline" : "error";
-      setStatus(nextStatus);
-      if (nextStatus === "error" && !options.overwrite) {
-        setFailureReason(result.error ?? "Cloud sync failed");
-        setFailureChoiceOpen(true);
+      const run = (async () => {
+        setStatus("syncing");
+        const result = await runSync(options);
+        if (result.ok) {
+          setFailureChoiceOpen(false);
+          setFailureReason(undefined);
+          setStatus("synced");
+          return;
+        }
+
+        const nextStatus = result.error === "offline" ? "offline" : "error";
+        setStatus(nextStatus);
+        if (nextStatus === "error" && !options.overwrite) {
+          setFailureReason(result.error ?? "Cloud sync failed");
+          setFailureChoiceOpen(true);
+        }
+      })();
+
+      inFlight.current = run;
+      try {
+        await run;
+      } finally {
+        inFlight.current = null;
       }
     },
     [sessionStatus]

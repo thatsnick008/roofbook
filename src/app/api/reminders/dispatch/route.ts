@@ -77,15 +77,17 @@ export async function GET(request: Request) {
     const to = bucket.email || preference?.ownerEmail;
     if (to && resend) {
       try {
-        await resend.emails.send({
+        // The Resend SDK returns { data, error } instead of throwing for API-level failures — check `error` explicitly.
+        const { error } = await resend.emails.send({
           from: process.env.REMINDER_FROM_EMAIL ?? "Roofbook <onboarding@resend.dev>",
           to,
           subject: `${bucket.items.length} property reminder${bucket.items.length === 1 ? "" : "s"} need attention`,
           html: renderEmail(bucket.items)
         });
-        sent += 1;
-      } catch {
-        // Retried on the next scheduled run.
+        if (error) console.error("[reminders/dispatch] Resend rejected the email:", error);
+        else sent += 1;
+      } catch (error) {
+        console.error("[reminders/dispatch] Failed to send email:", error);
       }
     }
 
