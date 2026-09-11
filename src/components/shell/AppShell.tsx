@@ -20,13 +20,14 @@ import { Field, Input, Select } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { SIGNED_IN_KEY } from "./AuthGate";
 import { clearAllData } from "@/lib/db";
-import { LOCAL_OWNER_KEY } from "@/components/providers/SyncProvider";
+import { LOCAL_OWNER_KEY, useSync } from "@/components/providers/SyncProvider";
 import type { CurrencyCode } from "@/lib/types";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { resolved, toggle } = useTheme();
   const { data: session } = useSession();
+  const { sync } = useSync();
   const toast = useToast();
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [quickOpen, setQuickOpen] = React.useState(false);
@@ -66,7 +67,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     setAccountOpen(false);
-    // Drop the offline-access grant and local cache so the next account on this device starts clean.
+    // Flush any pending edits (including deletes) before wiping the local cache, or they're lost for good.
+    await sync();
     window.localStorage.removeItem(SIGNED_IN_KEY);
     window.localStorage.removeItem(LOCAL_OWNER_KEY);
     await clearAllData();
