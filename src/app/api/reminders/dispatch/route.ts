@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { and, eq, isNull } from "drizzle-orm";
-import { Resend } from "resend";
 import { getDb, isDatabaseConfigured } from "@/server/db/client";
 import { properties, reminders, userSettings } from "@/server/db/schema";
 import { isPushConfigured, sendPushToUser } from "@/server/push";
+import { sendAppEmail } from "@/server/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,7 +65,6 @@ export async function GET(request: Request) {
 
   const preferences = await db.select().from(userSettings);
   const preferenceMap = new Map(preferences.map((row) => [row.userId, row]));
-  const resend = apiKey ? new Resend(apiKey) : null;
   const pushEnabled = isPushConfigured();
   let sent = 0;
   let pushed = 0;
@@ -75,20 +74,13 @@ export async function GET(request: Request) {
     if (preference && !preference.remindersEnabled) continue;
 
     const to = bucket.email || preference?.ownerEmail;
-    if (to && resend) {
-      try {
-        // The Resend SDK returns { data, error } instead of throwing for API-level failures — check `error` explicitly.
-        const { error } = await resend.emails.send({
-          from: process.env.REMINDER_FROM_EMAIL ?? "Roofbook <onboarding@resend.dev>",
-          to,
-          subject: `${bucket.items.length} property reminder${bucket.items.length === 1 ? "" : "s"} need attention`,
-          html: renderEmail(bucket.items)
-        });
-        if (error) console.error("[reminders/dispatch] Resend rejected the email:", error);
-        else sent += 1;
-      } catch (error) {
-        console.error("[reminders/dispatch] Failed to send email:", error);
-      }
+    if (to && apiKey) {
+      const result = await sendAppEmail({
+        to,
+        subject: `${bucket.items.length} property reminder${bucket.items.length === 1 ? "" : "s"} need attention`,
+        html: renderEmail(bucket.items)
+      });
+      if (result.ok) sent += 1;
     }
 
     if (pushEnabled) {

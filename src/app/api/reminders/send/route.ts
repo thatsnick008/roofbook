@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { z } from "zod";
 import { requireUserId } from "@/server/session";
+import { sendAppEmail } from "@/server/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,24 +74,15 @@ export async function POST(request: Request) {
     </div>
   </div>`;
 
-  try {
-    const resend = new Resend(apiKey);
-    // The Resend SDK returns { data, error } instead of throwing for API-level failures — check `error` explicitly.
-    const { error } = await resend.emails.send({
-      from: process.env.REMINDER_FROM_EMAIL ?? "Roofbook <onboarding@resend.dev>",
-      to,
-      subject: `${reminders.length} property reminder${reminders.length === 1 ? "" : "s"} need attention`,
-      html
-    });
-    if (error) {
-      console.error("[reminders/send] Resend rejected the email:", error);
-      return NextResponse.json({ ok: false, error: error.message ?? "Delivery failed" }, { status: 502 });
-    }
-    return NextResponse.json({ ok: true, sent: reminders.length });
-  } catch (error) {
-    console.error("[reminders/send] Failed to send email:", error);
-    return NextResponse.json({ ok: false, error: "Delivery failed" }, { status: 502 });
+  const result = await sendAppEmail({
+    to,
+    subject: `${reminders.length} property reminder${reminders.length === 1 ? "" : "s"} need attention`,
+    html
+  });
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, error: result.error ?? "Delivery failed" }, { status: 502 });
   }
+  return NextResponse.json({ ok: true, sent: reminders.length });
 }
 
 function escapeHtml(value: string): string {
