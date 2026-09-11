@@ -22,7 +22,7 @@ import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { groupByMonth, recognizedIncome, sum } from "@/lib/calc";
-import { compactMoney, compactMoneyPerPeriod, daysUntil, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
+import { compactMoney, compactMoneyLacs, compactMoneyPerPeriod, daysUntil, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { seedDemoData } from "@/lib/seed";
 import { useToast } from "@/components/ui/Toast";
@@ -43,7 +43,7 @@ export default function DashboardPage() {
   const reminders = useReminders() ?? EMPTY_REMINDERS;
   const [addOpen, setAddOpen] = React.useState(false);
 
-  const upcoming = reminders.filter((reminder) => !reminder.completed).slice(0, 5);
+  const upcoming = reminders.filter((reminder) => !reminder.completed).slice(0, 3);
   const currencyGroups = React.useMemo(
     () =>
       totalsByCurrency.map(({ currency, ...groupTotals }) => {
@@ -177,14 +177,14 @@ export default function DashboardPage() {
             <StatCard
               className="p-4"
               label="Portfolio value"
-              value={money(group.totals.valuation, false, group.currency)}
+              value={compactMoneyLacs(group.totals.valuation, group.currency)}
               helper={`${percent(group.totals.lvr, 1)} LVR`}
               icon={<Building2 size={20} />}
             />
             <StatCard
               className="p-4"
               label="Net equity"
-              value={money(group.totals.equity, false, group.currency)}
+              value={compactMoneyLacs(group.totals.equity, group.currency)}
               helper={`${compactMoney(group.totals.offset, group.currency)} in offset`}
               tone="positive"
               icon={<PiggyBank size={20} />}
@@ -192,7 +192,7 @@ export default function DashboardPage() {
             <StatCard
               className="p-4"
               label="Debt"
-              value={money(group.totals.debt, false, group.currency)}
+              value={compactMoneyLacs(group.totals.debt, group.currency)}
               helper="Across all facilities"
               tone="negative"
               icon={<Banknote size={20} />}
@@ -315,13 +315,17 @@ export default function DashboardPage() {
                   <span className="flex items-center gap-2 text-sm text-muted">
                     <Wallet size={16} /> {group.incomeEntries} entries
                   </span>
-                  <span className="text-xl font-bold">{money(group.totals.income, false, group.currency)}</span>
+                  <span className="text-xl font-bold">{compactMoneyLacs(group.totals.income, group.currency)}</span>
                 </CardBody>
               </Card>
             </div>
           </section>
         </section>
       ))}
+
+      <p className="pb-4 text-center text-xs text-muted">
+        Next step as an investor: review your highest-LVR property and consider paying down debt or refinancing to lift net cashflow. (beta)
+      </p>
 
       <PropertyForm open={addOpen} onClose={() => setAddOpen(false)} />
     </>

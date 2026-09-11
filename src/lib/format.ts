@@ -32,6 +32,16 @@ export function compactMoney(value: number, currency: CurrencyCode = "AUD"): str
   return money(value, false, currency);
 }
 
+/** Indian numbering: abbreviates large amounts as Lac (1,00,000) / Cr (1,00,00,000) instead of full digits. */
+export function compactMoneyLacs(value: number, currency: CurrencyCode = "AUD"): string {
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  const prefix = `${value < 0 ? "-" : ""}${currencySymbol(currency)}`;
+  if (abs >= 1_00_00_000) return `${prefix}${(abs / 1_00_00_000).toFixed(2)} Cr`;
+  if (abs >= 1_00_000) return `${prefix}${(abs / 1_00_000).toFixed(2)} L`;
+  return money(value, false, currency);
+}
+
 type MoneyPeriod = "week" | "fortnight" | "month" | "year";
 
 const periodSuffix: Record<MoneyPeriod, string> = {

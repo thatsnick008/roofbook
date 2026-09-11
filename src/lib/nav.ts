@@ -29,5 +29,5 @@ export const navItems: NavItem[] = [
   { href: "/contacts", label: "Contacts", icon: Users, description: "Managers, insurers & trades" },
   { href: "/documents", label: "Documents", icon: FileText, description: "Evidence vault" },
   { href: "/reports", label: "Reports", icon: FileBarChart, description: "Excel, PDF & tax packs", mobile: true },
-  { href: "/settings", label: "Settings", icon: Settings, description: "Backup, restore & theme" }
+  { href: "/settings", label: "Settings", icon: Settings, description: "Backup, restore & theme", mobile: true }
 ];
