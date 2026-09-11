@@ -38,6 +38,20 @@ export async function applyWithoutStamping<T>(fn: () => Promise<T>): Promise<T> 
   }
 }
 
+type LocalChangeListener = () => void;
+const localChangeListeners = new Set<LocalChangeListener>();
+
+/** Notified after any local create/update/delete (not server-applied writes) so the sync engine can push immediately. */
+export function onLocalChange(listener: LocalChangeListener): () => void {
+  localChangeListeners.add(listener);
+  return () => localChangeListeners.delete(listener);
+}
+
+function notifyLocalChange(): void {
+  if (!stampWrites) return;
+  queueMicrotask(() => localChangeListeners.forEach((listener) => listener()));
+}
+
 export class PropertyCommandCentreDB extends Dexie {
   properties!: Table<Property, string>;
   purchases!: Table<PurchaseDetails, string>;
@@ -206,16 +220,19 @@ export class PropertyCommandCentreDB extends Dexie {
       table.hook("creating", (_key, object) => {
         if (!stampWrites) return;
         object.updatedAt ??= new Date().toISOString();
+        notifyLocalChange();
       });
 
       table.hook("updating", (modifications) => {
         if (!stampWrites) return undefined;
+        notifyLocalChange();
         return { ...(modifications as Record<string, unknown>), updatedAt: new Date().toISOString() };
       });
 
       table.hook("deleting", (key) => {
         if (!stampWrites) return;
         this.tombstones.put({ id: String(key), table: name, deletedAt: new Date().toISOString() });
+        notifyLocalChange();
       });
     });
   }

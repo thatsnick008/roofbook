@@ -32,9 +32,11 @@ export function compactMoney(value: number, currency: CurrencyCode = "AUD"): str
   return money(value, false, currency);
 }
 
-/** Indian numbering: abbreviates large amounts as Lac (1,00,000) / Cr (1,00,00,000) instead of full digits. */
+/** Currency-aware compact form: Lac/Cr (Indian numbering) for INR, Million/k for everything else. */
 export function compactMoneyLacs(value: number, currency: CurrencyCode = "AUD"): string {
   if (!Number.isFinite(value)) return "—";
+  if (currency !== "INR") return compactMoney(value, currency);
+
   const abs = Math.abs(value);
   const prefix = `${value < 0 ? "-" : ""}${currencySymbol(currency)}`;
   if (abs >= 1_00_00_000) return `${prefix}${(abs / 1_00_00_000).toFixed(2)} Cr`;

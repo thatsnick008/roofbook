@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useSession } from "next-auth/react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { clearAllData, getSyncMeta } from "@/lib/db";
+import { clearAllData, getSyncMeta, onLocalChange } from "@/lib/db";
 import { hasPendingLocalChanges, runSync, type SyncOverwrite } from "@/lib/sync/engine";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -97,11 +97,21 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (document.visibilityState === "visible") void sync({ onlyIfChanged: true });
     };
 
+    // Push any local edit (add/update/delete, in this tab or another) to the server almost immediately,
+    // debounced briefly so rapid successive writes (e.g. a form) collapse into one sync call.
+    let debounce: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = onLocalChange(() => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => void sync({ onlyIfChanged: true }), 800);
+    });
+
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      clearTimeout(debounce);
+      unsubscribe();
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisible);
     };
