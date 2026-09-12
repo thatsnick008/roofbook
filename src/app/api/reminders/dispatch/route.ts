@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { getDb, isDatabaseConfigured } from "@/server/db/client";
 import { properties, reminders, userSettings } from "@/server/db/schema";
 import { isPushConfigured, sendPushToUser } from "@/server/push";
-import { sendAppEmail } from "@/server/email";
+import { isEmailConfigured, sendAppEmail } from "@/server/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Database not configured" }, { status: 503 });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
+  const emailEnabled = isEmailConfigured();
   const db = getDb();
 
   const rows = await db
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     if (preference && !preference.remindersEnabled) continue;
 
     const to = bucket.email || preference?.ownerEmail;
-    if (to && apiKey) {
+    if (to && emailEnabled) {
       const result = await sendAppEmail({
         to,
         subject: `${bucket.items.length} property reminder${bucket.items.length === 1 ? "" : "s"} need attention`,

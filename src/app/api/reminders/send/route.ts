@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUserId } from "@/server/session";
-import { sendAppEmail } from "@/server/email";
+import { isEmailConfigured, sendAppEmail } from "@/server/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,8 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Sign in required" }, { status: 401 });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
+  if (!isEmailConfigured()) {
     return NextResponse.json({ ok: false, error: "Email service not configured" }, { status: 503 });
   }
 

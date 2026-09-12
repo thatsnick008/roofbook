@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, isDatabaseConfigured } from "@/server/db/client";
 import { passwordResetTokens, users } from "@/server/db/schema";
-import { sendAppEmail } from "@/server/email";
+import { isEmailConfigured, sendAppEmail } from "@/server/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,8 +12,8 @@ const schema = z.object({ email: z.string().trim().toLowerCase().email().max(200
 
 export async function POST(request: Request) {
   const generic = { ok: true, message: "If an account exists for that email, a reset link has been sent." };
-  if (!isDatabaseConfigured() || !process.env.RESEND_API_KEY) {
-    console.warn("[forgot-password] Skipped — DATABASE_URL or RESEND_API_KEY is not configured.");
+  if (!isDatabaseConfigured() || !isEmailConfigured()) {
+    console.warn("[forgot-password] Skipped — DATABASE_URL is not configured, or no email provider (RESEND_API_KEY / GMAIL_USER+GMAIL_APP_PASSWORD) is set.");
     return NextResponse.json(generic);
   }
 
