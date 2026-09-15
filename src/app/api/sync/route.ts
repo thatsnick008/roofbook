@@ -132,9 +132,13 @@ async function pushRows(orm: any, userId: string, key: RegistryKey, incoming: Ro
 
   // The server clock is authoritative: incoming rows always win, but the row they replace
   // is snapshotted first so a stale or conflicting client push never loses data permanently.
+  // A row already soft-deleted here never gets resurrected by a stray/stale edit push (e.g. from
+  // a device or tab that hadn't yet pulled the delete) — the delete always wins once applied.
   for (const row of valid) {
-    const values = { ...row, userId, updatedAt: serverTime, deletedAt: null };
     const existingRow = existingMap.get(String(row.id));
+    if (existingRow?.deletedAt) continue;
+
+    const values = { ...row, userId, updatedAt: serverTime, deletedAt: null };
 
     if (!existingRow) {
       inserts.push(values);
