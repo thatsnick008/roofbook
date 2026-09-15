@@ -4,7 +4,7 @@ import * as React from "react";
 import { useSession } from "next-auth/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { clearAllData, getSyncMeta, onLocalChange } from "@/lib/db";
-import { hasPendingLocalChanges, runSync, type SyncOverwrite } from "@/lib/sync/engine";
+import { runSync, type SyncOverwrite } from "@/lib/sync/engine";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 
@@ -18,7 +18,7 @@ interface SyncContextValue {
   status: SyncStatus;
   lastSyncedAt?: string;
   error?: string;
-  sync: (options?: { full?: boolean; overwrite?: SyncOverwrite; onlyIfChanged?: boolean }) => Promise<void>;
+  sync: (options?: { full?: boolean; overwrite?: SyncOverwrite }) => Promise<void>;
 }
 
 const SyncContext = React.createContext<SyncContextValue>({
@@ -28,7 +28,7 @@ const SyncContext = React.createContext<SyncContextValue>({
 
 export const useSync = () => React.useContext(SyncContext);
 
-const AUTO_SYNC_MS = 5 * 60 * 1000;
+const AUTO_SYNC_MS = 60 * 1000;
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status: sessionStatus } = useSession();
@@ -40,7 +40,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const inFlight = React.useRef<Promise<void> | null>(null);
 
   const sync = React.useCallback(
-    async (options: { full?: boolean; overwrite?: SyncOverwrite; onlyIfChanged?: boolean } = {}) => {
+    async (options: { full?: boolean; overwrite?: SyncOverwrite } = {}) => {
       if (sessionStatus !== "authenticated") return;
       // If a sync is already running (e.g. the debounced auto-sync), wait for it instead of
       // skipping — callers that need pending changes flushed (like sign-out) must not return early.
@@ -48,7 +48,6 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         await inFlight.current;
         return;
       }
-      if (options.onlyIfChanged && !(await hasPendingLocalChanges())) return;
 
       const run = (async () => {
         setStatus("syncing");
@@ -101,14 +100,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       }
       window.localStorage.setItem(LOCAL_OWNER_KEY, userId);
       if (cancelled) return;
-      void sync({ full: previousOwner !== userId, onlyIfChanged: previousOwner === userId });
+      void sync({ full: previousOwner !== userId });
     };
     void start();
 
-    const interval = setInterval(() => void sync({ onlyIfChanged: true }), AUTO_SYNC_MS);
-    const onOnline = () => void sync({ onlyIfChanged: true });
+    const interval = setInterval(() => void sync(), AUTO_SYNC_MS);
+    const onOnline = () => void sync();
     const onVisible = () => {
-      if (document.visibilityState === "visible") void sync({ onlyIfChanged: true });
+      if (document.visibilityState === "visible") void sync();
     };
 
     // Push any local edit (add/update/delete, in this tab or another) to the server almost immediately,
@@ -116,10 +115,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     let debounce: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = onLocalChange(() => {
       clearTimeout(debounce);
-      debounce = setTimeout(() => void sync({ onlyIfChanged: true }), 800);
+      debounce = setTimeout(() => void sync(), 800);
     });
 
     window.addEventListener("online", onOnline);
+    window.addEventListener("focus", onOnline);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
@@ -127,6 +127,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(debounce);
       unsubscribe();
       window.removeEventListener("online", onOnline);
+      window.removeEventListener("focus", onOnline);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [sessionStatus, userId, sync]);

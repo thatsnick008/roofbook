@@ -7,7 +7,7 @@ import type { CurrencyCode } from "@/lib/types";
 
 export const DEFAULT_CURRENCY: CurrencyCode = "AUD";
 
-/** Session-scoped so the choice never leaks into stored settings or another tab. */
+/** Persisted per-browser so the filter doesn't silently reset (and hide records) on every new tab/session. */
 const STORAGE_KEY = "pcc-currency-filter";
 
 interface CurrencyContextValue {
@@ -39,7 +39,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     setCurrencyState((current) => {
       if (initialised.current) return available.includes(current) ? current : available[0];
       initialised.current = true;
-      const stored = window.sessionStorage.getItem(STORAGE_KEY) as CurrencyCode | null;
+      const stored = window.localStorage.getItem(STORAGE_KEY) as CurrencyCode | null;
       return stored && available.includes(stored) ? stored : available[0];
     });
   }, [available, properties]);
@@ -47,7 +47,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const setCurrency = React.useCallback((value: CurrencyCode) => {
     initialised.current = true;
     setCurrencyState(value);
-    window.sessionStorage.setItem(STORAGE_KEY, value);
+    window.localStorage.setItem(STORAGE_KEY, value);
   }, []);
 
   const value = React.useMemo(() => ({ currency, setCurrency, available }), [available, currency, setCurrency]);
