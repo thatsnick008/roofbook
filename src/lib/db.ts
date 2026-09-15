@@ -229,9 +229,9 @@ export class PropertyCommandCentreDB extends Dexie {
         return { ...(modifications as Record<string, unknown>), updatedAt: new Date().toISOString() };
       });
 
-      table.hook("deleting", (key) => {
+      table.hook("deleting", (key, _object, transaction) => {
         if (!stampWrites) return;
-        this.tombstones.put({ id: String(key), table: name, deletedAt: new Date().toISOString() });
+        transaction.table("tombstones").put({ id: String(key), table: name, deletedAt: new Date().toISOString() });
         notifyLocalChange();
       });
     });
