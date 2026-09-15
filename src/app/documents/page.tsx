@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
-import { db, nowIso, uid } from "@/lib/db";
+import { db, deleteRecord, nowIso, uid } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { EmptyState, PageHeader } from "@/components/ui/Primitives";
@@ -74,7 +74,7 @@ export default function DocumentsPage() {
     if (remote && navigator.onLine) {
       await fetch(`/api/documents/${id}`, { method: "DELETE" }).catch(() => undefined);
     }
-    await db.documents.delete(id);
+    await deleteRecord("documents", id);
     toast("Document deleted", "info");
   };
 

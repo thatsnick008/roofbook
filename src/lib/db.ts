@@ -291,6 +291,13 @@ const writableTables = () => [
   db.tombstones
 ];
 
+/** Deletes a single record and its tombstone atomically (the "deleting" hook writes to `tombstones`, which must be in scope). */
+export async function deleteRecord(table: SyncTable, id: string): Promise<void> {
+  await db.transaction("rw", [db.table(table), db.tombstones], async () => {
+    await db.table(table).delete(id);
+  });
+}
+
 export async function deleteProperty(propertyId: string): Promise<void> {
   await db.transaction("rw", writableTables(), async () => {
     await db.properties.delete(propertyId);

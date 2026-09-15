@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarCheck, Download, FileSpreadsheet, Pencil, Plus, Receipt, Trash2, Wallet } from "lucide-react";
-import { db, nowIso, uid } from "@/lib/db";
+import { db, deleteRecord, nowIso, uid } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
@@ -103,7 +103,7 @@ function IncomePanel() {
     });
 
   const remove = async (id: string) => {
-    await db.income.delete(id);
+    await deleteRecord("income", id);
     toast("Income entry deleted", "info");
   };
 
@@ -365,7 +365,7 @@ function ExpensesPanel() {
   const capital = sum(rows.filter((entry) => entry.capital).map((entry) => entry.amount));
 
   const remove = async (id: string) => {
-    await db.expenses.delete(id);
+    await deleteRecord("expenses", id);
     toast("Expense deleted", "info");
   };
 

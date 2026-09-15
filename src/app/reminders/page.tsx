@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { BellRing, Check, Download, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
-import { db } from "@/lib/db";
+import { db, deleteRecord } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
@@ -167,7 +167,7 @@ export default function RemindersPage() {
                       size="icon"
                       aria-label="Delete"
                       onClick={async () => {
-                        await db.reminders.delete(reminder.id);
+                        await deleteRecord("reminders", reminder.id);
                         toast("Reminder deleted", "info");
                       }}
                     >
