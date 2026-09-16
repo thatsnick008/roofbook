@@ -256,6 +256,8 @@ function IncomePanel() {
                 <thead>
                   <tr>
                     <th>Date</th>
+                    <th>Start</th>
+                    <th>End</th>
                     <th>Property</th>
                     <th>Category</th>
                     <th>Status</th>
@@ -269,6 +271,8 @@ function IncomePanel() {
                   {rows.map((entry) => (
                     <tr key={entry.id}>
                       <td>{formatDate(entry.date)}</td>
+                      <td className="text-muted">{entry.periodStart ? formatDate(entry.periodStart) : "—"}</td>
+                      <td className="text-muted">{entry.periodEnd ? formatDate(entry.periodEnd) : "—"}</td>
                       <td className="max-w-[180px] truncate">
                         {properties.find((property) => property.id === entry.propertyId)?.name ?? "—"}
                       </td>

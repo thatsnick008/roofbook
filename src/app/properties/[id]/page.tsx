@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Download, Pencil, Plus, Trash2 } from "lucide-react";
-import { db, deleteProperty } from "@/lib/db";
+import { db, deleteProperty, nowIso } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
@@ -75,6 +75,11 @@ export default function PropertyDetailPage() {
     await deleteProperty(property.id);
     toast("Property deleted", "info");
     router.push("/properties");
+  };
+
+  const markIncomePaid = async (entry: (typeof income)[number]) => {
+    await db.income.put({ ...entry, status: "received", updatedAt: nowIso() });
+    toast("Rent marked paid");
   };
 
   return (
@@ -269,6 +274,8 @@ export default function PropertyDetailPage() {
                 <thead>
                   <tr>
                     <th>Date</th>
+                    <th>Start</th>
+                    <th>End</th>
                     <th>Category</th>
                     <th>Status</th>
                     <th className="text-right">Amount</th>
@@ -283,11 +290,24 @@ export default function PropertyDetailPage() {
                     .map((entry) => (
                       <tr key={entry.id}>
                         <td>{formatDate(entry.date)}</td>
+                        <td className="text-muted">{entry.periodStart ? formatDate(entry.periodStart) : "—"}</td>
+                        <td className="text-muted">{entry.periodEnd ? formatDate(entry.periodEnd) : "—"}</td>
                         <td>{titleise(entry.category)}</td>
                         <td>
-                          <Badge tone={entry.status === "received" ? "positive" : entry.status === "arrears" ? "negative" : "warning"}>
-                            {titleise(entry.status)}
-                          </Badge>
+                          {entry.status === "pending" ? (
+                            <button
+                              type="button"
+                              onClick={() => markIncomePaid(entry)}
+                              title="Click to mark paid"
+                              className="chip cursor-pointer border-warning/30 bg-warning/15 text-warning transition hover:bg-warning/25"
+                            >
+                              {titleise(entry.status)}
+                            </button>
+                          ) : (
+                            <Badge tone={entry.status === "received" ? "positive" : entry.status === "arrears" ? "negative" : "warning"}>
+                              {titleise(entry.status)}
+                            </Badge>
+                          )}
                         </td>
                         <td className="text-right font-medium">{money(entry.amount, true, property.currency)}</td>
                         <td className="text-right text-muted">{money(entry.managementFee, true, property.currency)}</td>
