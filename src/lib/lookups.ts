@@ -315,12 +315,12 @@ export interface CalculatorInput {
   state: string;
   suburb: string;
   price: number;
-  annualRent: number;
+  weeklyRent: number;
   propertyType: PropertyType;
   lvr: number;
   interestRate: number;
   vacancyWeeks: number;
-  maintenancePercent: number;
+  maintenanceAmount: number;
 }
 
 export interface CostLine {
@@ -349,9 +349,10 @@ export interface CalculatorResult {
 export function estimateProperty(input: CalculatorInput): CalculatorResult {
   const lookup = stateLookup(input.state);
   const price = Math.max(input.price, 0);
-  const loan = Math.round((price * input.lvr) / 100);
+  const lvr = Math.min(Math.max(input.lvr, 0), 106);
+  const loan = Math.round((price * lvr) / 100);
   const deposit = price - loan;
-  const lmi = lendersMortgageInsurance(price, input.lvr);
+  const lmi = lendersMortgageInsurance(price, lvr);
 
   const upfront: CostLine[] = [
     { label: "Stamp duty", amount: stampDuty(price, input.state), note: `${lookup.code} investor rate` },
@@ -359,14 +360,15 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
     { label: "Building & pest inspection", amount: lookup.buildingAndPest },
     { label: "Title transfer fee", amount: lookup.transferFee },
     { label: "Mortgage registration", amount: loan > 0 ? lookup.mortgageRegistrationFee : 0 },
-    { label: "Lender's mortgage insurance", amount: lmi, note: `${input.lvr}% LVR` },
+    { label: "Lender's mortgage insurance", amount: lmi, note: `${lvr}% LVR` },
     { label: "Loan application & valuation", amount: loan > 0 ? 600 : 0 }
   ].filter((line) => line.amount > 0);
 
   const upfrontTotal = upfront.reduce((total, line) => total + line.amount, 0);
 
-  const vacancyLoss = Math.round((input.annualRent / 52) * input.vacancyWeeks);
-  const effectiveRent = Math.max(input.annualRent - vacancyLoss, 0);
+  const annualRent = Math.max(input.weeklyRent, 0) * 52;
+  const vacancyLoss = Math.round(input.weeklyRent * input.vacancyWeeks);
+  const effectiveRent = Math.max(annualRent - vacancyLoss, 0);
   const councilRates = Math.round(Math.max((price * lookup.councilRatesPercent) / 100, lookup.councilRatesMinimum));
   const insurance = Math.round(Math.max((price * lookup.insurancePercent) / 100, lookup.insuranceMinimum));
   const strata = attachedDwelling(input.propertyType)
@@ -382,7 +384,7 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
     },
     {
       label: "Letting & re-letting fees",
-      amount: Math.round((input.annualRent / 52) * lookup.lettingWeeks),
+      amount: Math.round(input.weeklyRent * lookup.lettingWeeks),
       note: `${lookup.lettingWeeks} weeks rent`
     },
     { label: "Council rates", amount: councilRates },
@@ -392,16 +394,16 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
     { label: "Land tax", amount: landTax(price, input.state), note: "On estimated land value" },
     {
       label: "Repairs & maintenance",
-      amount: Math.round((input.annualRent * input.maintenancePercent) / 100),
-      note: `${input.maintenancePercent}% of rent`
+      amount: Math.max(Math.round(input.maintenanceAmount), 0),
+      note: "Annual allowance"
     },
     { label: "Vacancy allowance", amount: vacancyLoss, note: `${input.vacancyWeeks} weeks` }
   ].filter((line) => line.amount > 0);
 
   const operatingTotal = operating.reduce((total, line) => total + line.amount, 0);
   const interest = Math.round((loan * input.interestRate) / 100);
-  const cashRequired = deposit + upfrontTotal - lmi;
-  const cashflowBeforeInterest = input.annualRent - operatingTotal;
+  const cashRequired = Math.max(deposit + upfrontTotal - lmi, 0);
+  const cashflowBeforeInterest = annualRent - operatingTotal;
 
   return {
     deposit,
@@ -413,7 +415,7 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
     operatingTotal,
     effectiveRent,
     interest,
-    grossYield: price > 0 ? (input.annualRent / price) * 100 : 0,
+    grossYield: price > 0 ? (annualRent / price) * 100 : 0,
     netYield: price > 0 ? (cashflowBeforeInterest / price) * 100 : 0,
     cashflowBeforeInterest,
     cashflowAfterInterest: cashflowBeforeInterest - interest,

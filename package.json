@@ -1,6 +1,6 @@
 {
   "name": "roofbook",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "private": true,
   "description": "Local-first property portfolio management — finance, income, expenses, reminders, documents and tax-ready reporting.",
   "scripts": {

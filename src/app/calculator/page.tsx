@@ -17,18 +17,43 @@ const DEFAULTS: CalculatorInput = {
   state: "QLD",
   suburb: "",
   price: 750_000,
-  annualRent: 33_800,
+  weeklyRent: 650,
   propertyType: "house",
   lvr: 80,
   interestRate: 6.2,
   vacancyWeeks: 2,
-  maintenancePercent: 5
+  maintenanceAmount: 1_690
 };
+
+const STORAGE_KEY = "roofbook-calculator-by-state";
+
+function readSavedInputs(): Record<string, CalculatorInput> {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return stored ? (JSON.parse(stored) as Record<string, CalculatorInput>) : {};
+  } catch {
+    return {};
+  }
+}
 
 export default function CalculatorPage() {
   const { currency } = useCurrencyFilter();
   const { metrics } = usePortfolio();
   const [input, setInput] = React.useState<CalculatorInput>(DEFAULTS);
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    const saved = readSavedInputs();
+    setInput(saved[DEFAULTS.state] ?? DEFAULTS);
+    setHydrated(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!hydrated) return;
+    const saved = readSavedInputs();
+    saved[input.state] = input;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  }, [hydrated, input]);
 
   const displayCurrency: CurrencyCode = currency;
   const suburbs = suburbsForState(input.state);
@@ -36,20 +61,19 @@ export default function CalculatorPage() {
 
   const patch = (values: Partial<CalculatorInput>) => setInput((current) => ({ ...current, ...values }));
 
-  const applyYield = (value: number) => patch({ annualRent: Math.round((input.price * value) / 100) });
-
   const selectSuburb = (name: string) => {
     const match = suburbs.find((entry) => entry.suburb === name);
     if (!match) {
       patch({ suburb: name });
       return;
     }
-    patch({ suburb: name, price: match.medianPrice, annualRent: match.weeklyRent * 52 });
+    patch({ suburb: name, price: match.medianPrice, weeklyRent: match.weeklyRent });
   };
 
   const selectState = (code: string) => {
     const lookup = stateLookup(code);
-    patch({ state: code, suburb: "", annualRent: Math.round((input.price * lookup.typicalGrossYield) / 100) });
+    const saved = readSavedInputs()[code];
+    patch(saved ?? { state: code, suburb: "", weeklyRent: Math.round((input.price * lookup.typicalGrossYield) / 100 / 52) });
   };
 
   const portfolio = React.useMemo(() => {
@@ -71,7 +95,7 @@ export default function CalculatorPage() {
     count: portfolio.count + 1,
     valuation: portfolio.valuation + input.price,
     debt: portfolio.debt + result.loan,
-    income: portfolio.income + input.annualRent,
+    income: portfolio.income + input.weeklyRent * 52,
     expenses: portfolio.expenses + result.operatingTotal,
     interest: portfolio.interest + result.interest,
     capitalRequired: portfolio.capitalRequired + result.cashRequired
@@ -132,32 +156,32 @@ export default function CalculatorPage() {
               />
             </Field>
 
-            <Field label="Expected annual rent">
+            <Field label="Expected weekly rent">
               <MoneyInput
-                value={input.annualRent}
+                value={input.weeklyRent}
                 currency={displayCurrency}
-                onValueChange={(value) => patch({ annualRent: value })}
+                onValueChange={(value) => patch({ weeklyRent: value })}
               />
             </Field>
 
-            <Field label="Gross yield %" hint="Editing the yield recalculates the expected rent.">
+            <Field label="Gross yield %" hint="Calculated from weekly rent and purchase price.">
               <Input
                 type="number"
-                step="0.1"
+                step="0.01"
                 value={result.grossYield.toFixed(2)}
-                onChange={(event) => applyYield(Number(event.target.value))}
+                readOnly
               />
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="LVR %">
+              <Field label="LVR %" hint="Up to 106%; the extra 6% allows for bank fees, conveyancing and other purchase costs.">
                 <Input
                   type="number"
                   step="1"
                   min={0}
-                  max={100}
+                  max={106}
                   value={input.lvr}
-                  onChange={(event) => patch({ lvr: Number(event.target.value) })}
+                  onChange={(event) => patch({ lvr: Math.min(Number(event.target.value), 106) })}
                 />
               </Field>
               <Field label="Interest rate %">
@@ -178,13 +202,11 @@ export default function CalculatorPage() {
                   onChange={(event) => patch({ vacancyWeeks: Number(event.target.value) })}
                 />
               </Field>
-              <Field label="Maintenance % of rent">
-                <Input
-                  type="number"
-                  step="0.5"
-                  min={0}
-                  value={input.maintenancePercent}
-                  onChange={(event) => patch({ maintenancePercent: Number(event.target.value) })}
+              <Field label="Maintenance (annual)">
+                <MoneyInput
+                  value={input.maintenanceAmount}
+                  currency={displayCurrency}
+                  onValueChange={(value) => patch({ maintenanceAmount: value })}
                 />
               </Field>
             </div>
@@ -296,7 +318,7 @@ export default function CalculatorPage() {
                   <ComparisonRow
                     label="Gross income"
                     current={portfolio.income}
-                    deal={input.annualRent}
+                    deal={input.weeklyRent * 52}
                     combined={cumulative.income}
                     currency={displayCurrency}
                   />
