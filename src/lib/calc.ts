@@ -76,14 +76,25 @@ export function rentPeriodsInFinancialYear(
   startMonth = FY_START_MONTH
 ): { start: string; end: string }[] {
   const { start, end } = financialYearRange(fy, startMonth);
-  const fyEnd = new Date(`${end}T00:00:00.000Z`);
-  const periods: { start: string; end: string }[] = [];
-  let cursor = new Date(`${start}T00:00:00.000Z`);
+  return rentPeriodsFrom(frequency, start, end);
+}
 
-  while (cursor <= fyEnd) {
+/** Splits [startDate, endDate] into consecutive billing periods, continuing the cadence from any prior end date. */
+export function rentPeriodsFrom(
+  frequency: Property["rentFrequency"],
+  startDate: string,
+  endDate: string
+): { start: string; end: string }[] {
+  const rangeEnd = new Date(`${endDate}T00:00:00.000Z`);
+  const periods: { start: string; end: string }[] = [];
+  let cursor = new Date(`${startDate}T00:00:00.000Z`);
+
+  while (cursor <= rangeEnd) {
     let periodEnd: Date;
     if (frequency === "monthly") {
-      periodEnd = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+      periodEnd = new Date(cursor);
+      periodEnd.setUTCMonth(cursor.getUTCMonth() + 1);
+      periodEnd.setUTCDate(periodEnd.getUTCDate() - 1);
     } else if (frequency === "weekly") {
       periodEnd = new Date(cursor);
       periodEnd.setUTCDate(cursor.getUTCDate() + 6);
@@ -91,7 +102,7 @@ export function rentPeriodsInFinancialYear(
       periodEnd = new Date(cursor);
       periodEnd.setUTCDate(cursor.getUTCDate() + 13);
     }
-    if (periodEnd > fyEnd) periodEnd = fyEnd;
+    if (periodEnd > rangeEnd) periodEnd = rangeEnd;
     periods.push({ start: toIsoDate(cursor), end: toIsoDate(periodEnd) });
     cursor = new Date(periodEnd);
     cursor.setUTCDate(cursor.getUTCDate() + 1);
@@ -102,6 +113,13 @@ export function rentPeriodsInFinancialYear(
 
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/** Returns the ISO date `days` after `dateIso`, e.g. to continue a schedule right after a prior period's end date. */
+export function addDaysIso(dateIso: string, days: number): string {
+  const date = new Date(`${dateIso}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return toIsoDate(date);
 }
 
 export function totalCapitalRequired(purchase?: PurchaseDetails, loan?: Loan): number {

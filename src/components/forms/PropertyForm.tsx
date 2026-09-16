@@ -9,10 +9,13 @@ import { useToast } from "@/components/ui/Toast";
 import { accentPalette, australianStates, currencies, propertyStatuses, propertyTypes, rentFrequencies } from "@/lib/options";
 import { titleise, todayIso, money, cn } from "@/lib/format";
 import {
+  addDaysIso,
   currentFinancialYear,
   financialYearLabel,
+  financialYearRange,
   managementFeeFor,
   rentAmountPerPeriod,
+  rentPeriodsFrom,
   rentPeriodsInFinancialYear,
   totalCapitalRequired
 } from "@/lib/calc";
@@ -89,22 +92,33 @@ function periodsPerYear(frequency: RentFrequency): number {
   return frequency === "weekly" ? 52 : frequency === "fortnightly" ? 26 : 12;
 }
 
-/** Fills in any periods of the current FY that don't already have a rent record, so new schedules show up as pending. */
+/** Fills in any pending periods still owed for the current FY, continuing from the last recorded period's end date. */
 async function generatePendingRentSchedule(property: Property): Promise<void> {
-  const periods = rentPeriodsInFinancialYear(property.rentFrequency, currentFinancialYear());
+  const fy = currentFinancialYear();
+  const { end: fyEnd } = financialYearRange(fy);
   const existing = await db.income
     .where("propertyId")
     .equals(property.id)
     .and((entry) => entry.category === "rent")
     .toArray();
-  const existingStarts = new Set(existing.map((entry) => entry.periodStart));
-  const missing = periods.filter((period) => !existingStarts.has(period.start));
-  if (!missing.length) return;
+
+  const latestEnd = existing.reduce<string | undefined>(
+    (latest, entry) => (entry.periodEnd && (!latest || entry.periodEnd > latest) ? entry.periodEnd : latest),
+    undefined
+  );
+
+  const periods = latestEnd
+    ? (() => {
+        const nextStart = addDaysIso(latestEnd, 1);
+        return nextStart <= fyEnd ? rentPeriodsFrom(property.rentFrequency, nextStart, fyEnd) : [];
+      })()
+    : rentPeriodsInFinancialYear(property.rentFrequency, fy);
+  if (!periods.length) return;
 
   const stamp = nowIso();
   const amount = rentAmountPerPeriod(property);
   await db.income.bulkAdd(
-    missing.map((period): IncomeEntry => ({
+    periods.map((period): IncomeEntry => ({
       id: uid(),
       propertyId: property.id,
       date: period.end,

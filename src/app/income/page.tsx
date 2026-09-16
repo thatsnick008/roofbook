@@ -107,6 +107,11 @@ function IncomePanel() {
     toast("Income entry deleted", "info");
   };
 
+  const markPaid = async (entry: IncomeEntry) => {
+    await db.income.put({ ...entry, status: "received", updatedAt: nowIso() });
+    toast("Rent marked paid");
+  };
+
   return (
     <>
       <PageHeader
@@ -172,14 +177,7 @@ function IncomePanel() {
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      disabled={paid}
-                      onClick={async () => {
-                        await db.income.put({ ...entry, status: "received", updatedAt: nowIso() });
-                        toast("Rent marked paid");
-                      }}
-                    >
+                    <Button size="sm" disabled={paid} onClick={() => markPaid(entry)}>
                       <CalendarCheck size={14} /> Mark paid
                     </Button>
                     <Button
@@ -276,19 +274,28 @@ function IncomePanel() {
                       </td>
                       <td>{titleise(entry.category)}</td>
                       <td>
-                        <Badge
-                          tone={
-                            entry.status === "received"
-                              ? "positive"
-                              : entry.status === "arrears"
-                                ? "negative"
-                                : entry.status === "vacant"
-                                  ? "warning"
-                                  : "neutral"
-                          }
-                        >
-                          {titleise(entry.status)}
-                        </Badge>
+                        {entry.status === "pending" ? (
+                          <button
+                            type="button"
+                            onClick={() => markPaid(entry)}
+                            title="Click to mark paid"
+                            className="chip cursor-pointer border-warning/30 bg-warning/15 text-warning transition hover:bg-warning/25"
+                          >
+                            {titleise(entry.status)}
+                          </button>
+                        ) : (
+                          <Badge
+                            tone={
+                              entry.status === "received"
+                                ? "positive"
+                                : entry.status === "arrears"
+                                  ? "negative"
+                                  : "warning"
+                            }
+                          >
+                            {titleise(entry.status)}
+                          </Badge>
+                        )}
                       </td>
                       <td className="text-right font-medium">{money(entry.amount, true)}</td>
                       <td className="text-right text-muted">{money(entry.managementFee, true)}</td>
@@ -300,10 +307,7 @@ function IncomePanel() {
                               variant="ghost"
                               size="icon"
                               aria-label="Mark paid"
-                              onClick={async () => {
-                                await db.income.put({ ...entry, status: "received", updatedAt: nowIso() });
-                                toast("Rent marked paid");
-                              }}
+                              onClick={() => markPaid(entry)}
                             >
                               <CalendarCheck size={15} className="text-positive" />
                             </Button>
