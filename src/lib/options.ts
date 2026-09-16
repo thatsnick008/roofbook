@@ -43,6 +43,7 @@ export const expenseCategories: ExpenseCategory[] = [
   "land-tax",
   "interest",
   "accounting",
+  "depreciation",
   "capital-works",
   "other"
 ];

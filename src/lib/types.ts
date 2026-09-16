@@ -114,6 +114,7 @@ export type ExpenseCategory =
   | "land-tax"
   | "interest"
   | "accounting"
+  | "depreciation"
   | "capital-works"
   | "other";
 
