@@ -255,6 +255,7 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
     { Metric: "Total income", Value: totals.income },
     { Metric: "Total expenses", Value: totals.expenses },
     { Metric: "Net cashflow / year", Value: totals.cashflow },
+    { Metric: "Net cashflow (cash) / year", Value: totals.cashflowCash },
     { Metric: "Gross yield %", Value: round(totals.grossYield) },
     { Metric: "Net yield %", Value: round(totals.netYield) },
     { Metric: "Generated", Value: new Date().toLocaleString("en-AU") }
@@ -280,6 +281,7 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
     Income: metric.income,
     Expenses: metric.expenses,
     "Net cashflow / year": metric.cashflow,
+    "Net cashflow (cash) / year": metric.cashflowCash,
     "Gross yield %": round(metric.grossYield),
     "Net yield %": round(metric.netYield),
     "Capital growth": round(metric.capitalGrowth),

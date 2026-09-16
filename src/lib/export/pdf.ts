@@ -47,6 +47,7 @@ export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "
       ["Income", amount(totals.income)],
       ["Expenses", amount(totals.expenses)],
       ["Net cashflow / year", amount(totals.cashflow)],
+      ["Net cashflow (cash) / year", amount(totals.cashflowCash)],
       ["Gross yield", percent(totals.grossYield)],
       ["Net yield", percent(totals.netYield)]
     ],

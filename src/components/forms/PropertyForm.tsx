@@ -350,6 +350,20 @@ export function PropertyForm({
               onValueChange={(value) => patchProperty({ annualDepreciation: value })}
             />
           </Field>
+          <Field label="Lease start" hint="Optional — leave blank if there's no active lease.">
+            <Input
+              type="date"
+              value={property.leaseStart ?? ""}
+              onChange={(event) => patchProperty({ leaseStart: event.target.value || undefined })}
+            />
+          </Field>
+          <Field label="Lease end" hint="Optional — leave blank if there's no active lease.">
+            <Input
+              type="date"
+              value={property.leaseEnd ?? ""}
+              onChange={(event) => patchProperty({ leaseEnd: event.target.value || undefined })}
+            />
+          </Field>
           <Field label="Estimated rent" className="sm:col-span-2">
             <Toggle
               checked={knowsRent}

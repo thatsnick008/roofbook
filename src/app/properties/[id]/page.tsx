@@ -131,7 +131,12 @@ export default function PropertyDetailPage() {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Valuation" value={money(metric.valuation, false, property.currency)} helper={formatDate(property.valuationDate)} />
             <StatCard label="Equity" value={money(metric.equity, false, property.currency)} tone="positive" helper={percent(metric.lvr, 1) + " LVR"} />
-            <StatCard label="Net cashflow / year" value={moneyPerPeriod(metric.cashflow, "year", false, property.currency)} tone={metric.cashflow >= 0 ? "positive" : "negative"} />
+            <StatCard
+              label="Net cashflow / year"
+              value={moneyPerPeriod(metric.cashflow, "year", false, property.currency)}
+              helper={`Cash (excl. depreciation): ${money(metric.cashflowCash, false, property.currency)}`}
+              tone={metric.cashflow >= 0 ? "positive" : "negative"}
+            />
             <StatCard label="Net yield" value={percent(metric.netYield, 2)} helper={`Gross ${percent(metric.grossYield, 2)}`} />
           </section>
 
@@ -153,6 +158,12 @@ export default function PropertyDetailPage() {
                 <MiniStat label="Offset" value={metric.offset} currency={property.currency} />
                 <MiniStat label="Income" value={metric.income} currency={property.currency} />
                 <MiniStat label="Expenses" value={metric.expenses} currency={property.currency} />
+                {property.leaseStart || property.leaseEnd ? (
+                  <MiniStat
+                    label="Lease period"
+                    value={`${property.leaseStart ? formatDate(property.leaseStart) : "—"} to ${property.leaseEnd ? formatDate(property.leaseEnd) : "—"}`}
+                  />
+                ) : null}
               </CardBody>
             </Card>
           </section>

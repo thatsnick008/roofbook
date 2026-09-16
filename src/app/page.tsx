@@ -201,7 +201,7 @@ export default function DashboardPage() {
               className="p-4"
               label="Net cashflow / month"
               value={moneyPerPeriod(group.latestMonth?.net ?? 0, "month", false, group.currency)}
-              helper={`${group.latestMonth?.month ?? "This month"} · ${moneyPerPeriod(group.totals.cashflow, "year", false, group.currency)} total`}
+              helper={`${group.latestMonth?.month ?? "This month"} · ${moneyPerPeriod(group.totals.cashflow, "year", false, group.currency)} total · ${moneyPerPeriod(group.totals.cashflowCash, "year", false, group.currency)} cash`}
               tone={group.totals.cashflow >= 0 ? "positive" : "warning"}
               icon={<TrendingUp size={20} />}
             />
@@ -290,6 +290,9 @@ export default function DashboardPage() {
                         <p className="text-[11px] uppercase tracking-wide text-muted">Cashflow / year</p>
                         <p className={metric.cashflow >= 0 ? "font-semibold text-positive" : "font-semibold text-negative"}>
                           {compactMoneyPerPeriod(metric.cashflow, "year", group.currency)}
+                        </p>
+                        <p className="text-[10px] text-muted">
+                          {compactMoneyPerPeriod(metric.cashflowCash, "year", group.currency)} cash
                         </p>
                       </div>
                     </div>

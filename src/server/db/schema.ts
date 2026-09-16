@@ -47,6 +47,8 @@ export const properties = pgTable(
     rentFrequency: text("rent_frequency").notNull().default("monthly"),
     currency: text("currency").notNull().default("AUD"),
     valuationDate: text("valuation_date"),
+    leaseStart: text("lease_start"),
+    leaseEnd: text("lease_end"),
     accent: text("accent").notNull().default("#2563eb"),
     taxTreatment: text("tax_treatment").notNull().default("offset"),
     notes: text("notes"),

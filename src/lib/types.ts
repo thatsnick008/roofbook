@@ -29,6 +29,8 @@ export interface Property {
   rentFrequency: RentFrequency;
   currency: CurrencyCode;
   valuationDate?: string;
+  leaseStart?: string;
+  leaseEnd?: string;
   accent: string;
   taxTreatment: PropertyTaxTreatment;
   notes?: string;
@@ -239,6 +241,7 @@ export interface PortfolioTotals {
   income: number;
   expenses: number;
   cashflow: number;
+  cashflowCash: number;
   grossYield: number;
   netYield: number;
 }

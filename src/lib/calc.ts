@@ -198,6 +198,7 @@ export interface PropertyMetrics {
   interest: number;
   annualDepreciation: number;
   cashflow: number;
+  cashflowCash: number;
   grossYield: number;
   netYield: number;
   capitalGrowth: number;
@@ -224,6 +225,8 @@ export function propertyMetrics(
   const totalExpenses = cashExpenses + managementFees + annualDepreciation;
   const capitalRequired = totalCapitalRequired(purchase, loan);
   const netCashflow = grossIncome - totalExpenses;
+  // Depreciation is a non-cash deduction, so the cash-basis figure adds it back.
+  const cashCashflow = netCashflow + annualDepreciation;
 
   return {
     property,
@@ -240,6 +243,7 @@ export function propertyMetrics(
     interest,
     annualDepreciation,
     cashflow: netCashflow,
+    cashflowCash: cashCashflow,
     grossYield: valuation > 0 ? (annualise(countedIncome) / valuation) * 100 : 0,
     netYield: valuation > 0 ? ((annualise(countedIncome) - totalExpenses) / valuation) * 100 : 0,
     capitalGrowth: purchase?.purchasePrice ? valuation - purchase.purchasePrice : 0,
@@ -266,6 +270,7 @@ export function portfolioTotals(metrics: PropertyMetrics[]): PortfolioTotals {
     income,
     expenses,
     cashflow: income - expenses,
+    cashflowCash: sum(metrics.map((m) => m.cashflowCash)),
     grossYield: valuation > 0 ? (income / valuation) * 100 : 0,
     netYield: valuation > 0 ? ((income - expenses) / valuation) * 100 : 0
   };

@@ -30,6 +30,8 @@ const propertySchema = z.object({
   rentFrequency: z.enum(["weekly", "fortnightly", "monthly"]).default("monthly"),
   currency: z.enum(["AUD", "USD", "INR", "GBP", "EUR", "NZD", "SGD", "CAD"]).default("AUD"),
   valuationDate: text(40).optional().nullable(),
+  leaseStart: text(40).optional().nullable(),
+  leaseEnd: text(40).optional().nullable(),
   accent: text(32).default("#2563eb"),
   taxTreatment: z.enum(["offset", "retain"]).default("offset"),
   notes: text(4000).optional().nullable(),

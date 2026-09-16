@@ -190,6 +190,7 @@ export default function ReportsPage() {
                     <th className="text-right">Income</th>
                     <th className="text-right">Expenses</th>
                     <th className="text-right">Net / year</th>
+                    <th className="text-right">Cash / year</th>
                     <th className="text-right">Yield</th>
                     <th className="text-right">Gearing</th>
                   </tr>
@@ -203,6 +204,7 @@ export default function ReportsPage() {
                         <td className="text-right text-positive">{money(metric.income)}</td>
                         <td className="text-right text-negative">{money(metric.expenses)}</td>
                         <td className="text-right font-semibold">{moneyPerPeriod(metric.cashflow, "year")}</td>
+                        <td className="text-right text-muted">{moneyPerPeriod(metric.cashflowCash, "year")}</td>
                         <td className="text-right">{percent(metric.netYield, 2)}</td>
                         <td className="text-right">
                           <Badge tone={held ? "warning" : "neutral"}>{held ? "Held" : "Offset"}</Badge>
