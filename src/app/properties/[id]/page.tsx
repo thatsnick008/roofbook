@@ -25,6 +25,7 @@ import {
   monthlyRepayment,
   offsetSavingsPerYear,
   propertyMetrics,
+  sum,
   totalCapitalRequired
 } from "@/lib/calc";
 import { cn, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
