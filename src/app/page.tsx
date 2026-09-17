@@ -16,12 +16,13 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
+import { Toggle } from "@/components/ui/Field";
 import { StatCard } from "@/components/ui/StatCard";
 import { CashflowChart, CategoryDonut, EquityTrend } from "@/components/charts/Charts";
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
-import { groupByMonth, recognizedIncome, sum } from "@/lib/calc";
+import { groupByMonth, portfolioTotals, recognizedIncome, sum } from "@/lib/calc";
 import { compactMoney, compactMoneyLacs, compactMoneyPerPeriod, daysUntil, formatDate, money, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { seedDemoData } from "@/lib/seed";
@@ -42,18 +43,28 @@ export default function DashboardPage() {
   const expenses = useExpenses() ?? EMPTY_EXPENSES;
   const reminders = useReminders() ?? EMPTY_REMINDERS;
   const [addOpen, setAddOpen] = React.useState(false);
+  const [includeDepreciation, setIncludeDepreciation] = React.useState(true);
 
   const upcoming = reminders.filter((reminder) => !reminder.completed).slice(0, 3);
   const currencyGroups = React.useMemo(
     () =>
       totalsByCurrency.map(({ currency, ...groupTotals }) => {
-        const groupMetrics = metrics.filter((metric) => (metric.property.currency ?? "AUD") === currency);
-        const propertyIds = new Set(groupMetrics.map((metric) => metric.property.id));
+        const baseGroupMetrics = metrics.filter((metric) => (metric.property.currency ?? "AUD") === currency);
+        const annualDepreciation = sum(baseGroupMetrics.map((metric) => metric.annualDepreciation));
+        const groupMetrics = includeDepreciation
+          ? baseGroupMetrics
+          : baseGroupMetrics.map((metric) => ({
+              ...metric,
+              expenses: metric.expenses - metric.annualDepreciation,
+              cashflow: metric.cashflowCash,
+              netYield: metric.valuation > 0 ? (metric.cashflowCash / metric.valuation) * 100 : 0,
+              cashOnCash: metric.capitalRequired > 0 ? (metric.cashflowCash / metric.capitalRequired) * 100 : 0
+            }));
+        const propertyIds = new Set(baseGroupMetrics.map((metric) => metric.property.id));
         const groupIncome = income.filter((entry) => propertyIds.has(entry.propertyId));
         const countedGroupIncome = recognizedIncome(groupIncome);
         const groupExpenses = expenses.filter((entry) => propertyIds.has(entry.propertyId));
-        const annualDepreciation = sum(groupMetrics.map((metric) => metric.annualDepreciation));
-        const monthly = groupByMonth(groupIncome, groupExpenses, annualDepreciation);
+        const monthly = groupByMonth(groupIncome, groupExpenses, annualDepreciation, { includeDepreciation });
         const categoryTotals = new Map<string, number>();
         groupExpenses.forEach((entry) => {
           categoryTotals.set(entry.category, (categoryTotals.get(entry.category) ?? 0) + entry.amount);
@@ -69,7 +80,7 @@ export default function DashboardPage() {
 
         return {
           currency,
-          totals: groupTotals,
+          totals: includeDepreciation ? groupTotals : portfolioTotals(groupMetrics),
           metrics: groupMetrics,
           monthly,
           latestMonth: monthly[monthly.length - 1],
@@ -77,7 +88,7 @@ export default function DashboardPage() {
           incomeEntries: countedGroupIncome.length
         };
       }),
-    [expenses, income, metrics, totalsByCurrency]
+    [expenses, income, includeDepreciation, metrics, totalsByCurrency]
   );
 
   const handleSeed = async () => {
@@ -116,6 +127,9 @@ export default function DashboardPage() {
         subtitle={`${totals.properties} ${totals.properties === 1 ? "property" : "properties"}`}
         actions={
           <>
+            <div className="w-full sm:w-56">
+              <Toggle checked={includeDepreciation} onChange={setIncludeDepreciation} label="Include depreciation" />
+            </div>
             {EXPORTS_ENABLED ? (
               <Button variant="secondary" onClick={() => exportPortfolioWorkbook(undefined, currency)}>
                 <Download size={16} /> Export Excel

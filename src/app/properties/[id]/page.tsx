@@ -8,6 +8,7 @@ import { ArrowLeft, Download, Pencil, Plus, Trash2 } from "lucide-react";
 import { db, deleteProperty, nowIso } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { Select, Toggle } from "@/components/ui/Field";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
 import { MiniStat, StatCard } from "@/components/ui/StatCard";
 import { PropertyForm } from "@/components/forms/PropertyForm";
@@ -15,8 +16,11 @@ import { QuickAdd } from "@/components/quick/QuickAdd";
 import { CashflowChart } from "@/components/charts/Charts";
 import {
   annualInterestForecast,
+  availableFinancialYears,
   costBase,
+  financialYearLabel,
   groupByMonth,
+  inFinancialYear,
   monthlyRepayment,
   offsetSavingsPerYear,
   propertyMetrics,
@@ -37,6 +41,8 @@ export default function PropertyDetailPage() {
   const [tab, setTab] = React.useState<(typeof tabs)[number]>("Overview");
   const [editOpen, setEditOpen] = React.useState(false);
   const [quickOpen, setQuickOpen] = React.useState(false);
+  const [fy, setFy] = React.useState<number | "all">("all");
+  const [includeDepreciation, setIncludeDepreciation] = React.useState(true);
 
   const data = useLiveQuery(async () => {
     const property = await db.properties.get(id);
@@ -67,8 +73,11 @@ export default function PropertyDetailPage() {
   }
 
   const { property, purchase, loan, income, expenses, reminders } = data;
-  const metric = propertyMetrics(property, purchase, loan, income, expenses);
-  const monthly = groupByMonth(income, expenses, metric.annualDepreciation);
+  const years = availableFinancialYears(income, expenses);
+  const scopedIncome = fy === "all" ? income : income.filter((entry) => inFinancialYear(entry.date, fy));
+  const scopedExpenses = fy === "all" ? expenses : expenses.filter((entry) => inFinancialYear(entry.date, fy));
+  const metric = propertyMetrics(property, purchase, loan, scopedIncome, scopedExpenses, { includeDepreciation });
+  const monthly = groupByMonth(scopedIncome, scopedExpenses, metric.annualDepreciation, { includeDepreciation });
 
   const remove = async () => {
     if (!window.confirm(`Delete ${property.name} and all associated records? This cannot be undone.`)) return;
@@ -128,13 +137,31 @@ export default function PropertyDetailPage() {
 
       {tab === "Overview" ? (
         <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              className="h-11 w-40"
+              value={String(fy)}
+              onChange={(event) => setFy(event.target.value === "all" ? "all" : Number(event.target.value))}
+            >
+              <option value="all">All time</option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {financialYearLabel(year)}
+                </option>
+              ))}
+            </Select>
+            <div className="w-full sm:w-56">
+              <Toggle checked={includeDepreciation} onChange={setIncludeDepreciation} label="Include depreciation" />
+            </div>
+          </div>
+
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Valuation" value={money(metric.valuation, false, property.currency)} helper={formatDate(property.valuationDate)} />
             <StatCard label="Equity" value={money(metric.equity, false, property.currency)} tone="positive" helper={percent(metric.lvr, 1) + " LVR"} />
             <StatCard
               label="Net cashflow / year"
               value={moneyPerPeriod(metric.cashflow, "year", false, property.currency)}
-              helper={`Cash (excl. depreciation): ${money(metric.cashflowCash, false, property.currency)}`}
+              helper={includeDepreciation ? `Cash (excl. depreciation): ${money(metric.cashflowCash, false, property.currency)}` : "Depreciation excluded"}
               tone={metric.cashflow >= 0 ? "positive" : "negative"}
             />
             <StatCard label="Net yield" value={percent(metric.netYield, 2)} helper={`Gross ${percent(metric.grossYield, 2)}`} />

@@ -5,7 +5,7 @@ import { Calculator, Layers, PiggyBank, Receipt, TrendingUp } from "lucide-react
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/Primitives";
 import { StatCard } from "@/components/ui/StatCard";
-import { Field, Input, MoneyInput, Select } from "@/components/ui/Field";
+import { Field, Input, MoneyInput, Select, Toggle } from "@/components/ui/Field";
 import { usePortfolio } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { estimateProperty, stateLookup, stateLookups, suburbsForState, type CalculatorInput } from "@/lib/lookups";
@@ -41,6 +41,7 @@ export default function CalculatorPage() {
   const { metrics } = usePortfolio();
   const [input, setInput] = React.useState<CalculatorInput>(DEFAULTS);
   const [hydrated, setHydrated] = React.useState(false);
+  const [includeDepreciation, setIncludeDepreciation] = React.useState(true);
 
   React.useEffect(() => {
     const saved = readSavedInputs();
@@ -77,7 +78,16 @@ export default function CalculatorPage() {
   };
 
   const portfolio = React.useMemo(() => {
-    const totals = metrics.reduce(
+    const cashflowMetrics = includeDepreciation
+      ? metrics
+      : metrics.map((metric) => ({
+          ...metric,
+          expenses: metric.expenses - metric.annualDepreciation,
+          cashflow: metric.cashflowCash,
+          netYield: metric.valuation > 0 ? (metric.cashflowCash / metric.valuation) * 100 : 0,
+          cashOnCash: metric.capitalRequired > 0 ? (metric.cashflowCash / metric.capitalRequired) * 100 : 0
+        }));
+    const totals = cashflowMetrics.reduce(
       (acc, metric) => ({
         valuation: acc.valuation + metric.valuation,
         debt: acc.debt + metric.debt,
@@ -88,8 +98,8 @@ export default function CalculatorPage() {
       }),
       { valuation: 0, debt: 0, income: 0, expenses: 0, interest: 0, capitalRequired: 0 }
     );
-    return { ...totals, count: metrics.length };
-  }, [metrics]);
+    return { ...totals, count: cashflowMetrics.length };
+  }, [includeDepreciation, metrics]);
 
   const cumulative = {
     count: portfolio.count + 1,
@@ -108,6 +118,11 @@ export default function CalculatorPage() {
       <PageHeader
         title="Acquisition calculator"
         subtitle="Estimate purchase and holding costs for a prospective property, then see the portfolio impact."
+        actions={
+          <div className="w-full sm:w-56">
+            <Toggle checked={includeDepreciation} onChange={setIncludeDepreciation} label="Include depreciation" />
+          </div>
+        }
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">

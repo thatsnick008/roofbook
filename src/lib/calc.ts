@@ -206,13 +206,19 @@ export interface PropertyMetrics {
   cashOnCash: number;
 }
 
+export interface CashflowOptions {
+  includeDepreciation?: boolean;
+}
+
 export function propertyMetrics(
   property: Property,
   purchase: PurchaseDetails | undefined,
   loan: Loan | undefined,
   income: IncomeEntry[],
-  expenses: ExpenseEntry[]
+  expenses: ExpenseEntry[],
+  options: CashflowOptions = {}
 ): PropertyMetrics {
+  const includeDepreciation = options.includeDepreciation ?? true;
   const valuation = property.currentValuation || purchase?.valuation || purchase?.purchasePrice || 0;
   const debt = loan?.loanBalance ?? 0;
   const offset = loan?.offsetBalance ?? 0;
@@ -222,11 +228,11 @@ export function propertyMetrics(
   const cashExpenses = sum(expenses.filter((entry) => !entry.capital).map((entry) => entry.amount));
   const interest = annualInterestForecast(loan);
   const annualDepreciation = property.annualDepreciation ?? 0;
-  const totalExpenses = cashExpenses + managementFees + annualDepreciation;
+  const depreciationExpense = includeDepreciation ? annualDepreciation : 0;
+  const totalExpenses = cashExpenses + managementFees + depreciationExpense;
   const capitalRequired = totalCapitalRequired(purchase, loan);
   const netCashflow = grossIncome - totalExpenses;
-  // Depreciation is a non-cash deduction, so the cash-basis figure adds it back.
-  const cashCashflow = netCashflow + annualDepreciation;
+  const cashCashflow = grossIncome - cashExpenses - managementFees;
 
   return {
     property,
@@ -294,8 +300,10 @@ export function sum(values: number[]): number {
 export function groupByMonth(
   income: IncomeEntry[],
   expenses: ExpenseEntry[],
-  annualDepreciation = 0
+  annualDepreciation = 0,
+  options: CashflowOptions = {}
 ): { month: string; income: number; expenses: number; net: number }[] {
+  const includeDepreciation = options.includeDepreciation ?? true;
   const buckets = new Map<string, { income: number; expenses: number }>();
   const key = (iso: string) => iso.slice(0, 7);
 
@@ -312,7 +320,7 @@ export function groupByMonth(
     buckets.set(key(entry.date), bucket);
   });
 
-  const depreciationPerMonth = annualDepreciation / 12;
+  const depreciationPerMonth = includeDepreciation ? annualDepreciation / 12 : 0;
   buckets.forEach((bucket) => {
     bucket.expenses += depreciationPerMonth;
   });

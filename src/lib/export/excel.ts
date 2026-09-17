@@ -14,6 +14,7 @@ import {
   sum,
   totalCapitalRequired
 } from "../calc";
+import type { CashflowOptions } from "../calc";
 import { loadSnapshot, propertyNameMap, type Snapshot } from "../data";
 import { titleise } from "../format";
 import { roofbookTemplate, templateForSheet } from "./roofbook-template";
@@ -227,7 +228,7 @@ export function triggerDownload(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
+export function buildSheets(snapshot: Snapshot, fy?: number, options: CashflowOptions = {}): Sheet[] {
   const names = propertyNameMap(snapshot.properties);
   const income = fy ? snapshot.income.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.income;
   const countedIncome = recognizedIncome(income);
@@ -239,7 +240,8 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
       snapshot.purchases.find((purchase) => purchase.propertyId === property.id),
       snapshot.loans.find((loan) => loan.propertyId === property.id),
       income.filter((entry) => entry.propertyId === property.id),
-      expenses.filter((entry) => entry.propertyId === property.id)
+      expenses.filter((entry) => entry.propertyId === property.id),
+      options
     )
   );
   const totals = portfolioTotals(metrics);
@@ -254,6 +256,7 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
     { Metric: "Portfolio LVR %", Value: round(totals.lvr) },
     { Metric: "Total income", Value: totals.income },
     { Metric: "Total expenses", Value: totals.expenses },
+    { Metric: "Cashflow includes depreciation", Value: options.includeDepreciation ?? true ? "Yes" : "No" },
     { Metric: "Net cashflow / year", Value: totals.cashflow },
     { Metric: "Net cashflow (cash) / year", Value: totals.cashflowCash },
     { Metric: "Gross yield %", Value: round(totals.grossYield) },
@@ -436,21 +439,21 @@ export function buildSheets(snapshot: Snapshot, fy?: number): Sheet[] {
   ];
 }
 
-export async function exportPortfolioWorkbook(fy?: number, currency?: CurrencyCode): Promise<void> {
+export async function exportPortfolioWorkbook(fy?: number, currency?: CurrencyCode, options: CashflowOptions = {}): Promise<void> {
   const snapshot = await loadSnapshot(currency);
-  await downloadWorkbook(buildSheets(snapshot, fy), `roofbook-${fileSuffix(fy, currency)}.xlsx`);
+  await downloadWorkbook(buildSheets(snapshot, fy, options), `roofbook-${fileSuffix(fy, currency)}.xlsx`);
 }
 
-export async function exportSingleSheet(sheetName: string, fy?: number, currency?: CurrencyCode): Promise<void> {
+export async function exportSingleSheet(sheetName: string, fy?: number, currency?: CurrencyCode, options: CashflowOptions = {}): Promise<void> {
   const snapshot = await loadSnapshot(currency);
-  const sheet = buildSheets(snapshot, fy).find((item) => item.name === sheetName);
+  const sheet = buildSheets(snapshot, fy, options).find((item) => item.name === sheetName);
   if (!sheet) return;
   await downloadWorkbook([sheet], `roofbook-${slug(sheetName)}-${fileSuffix(fy, currency)}.xlsx`);
 }
 
-export async function exportSingleSheetCsv(sheetName: string, fy?: number, currency?: CurrencyCode): Promise<void> {
+export async function exportSingleSheetCsv(sheetName: string, fy?: number, currency?: CurrencyCode, options: CashflowOptions = {}): Promise<void> {
   const snapshot = await loadSnapshot(currency);
-  const sheet = buildSheets(snapshot, fy).find((item) => item.name === sheetName);
+  const sheet = buildSheets(snapshot, fy, options).find((item) => item.name === sheetName);
   if (!sheet) return;
   await downloadCsv(sheet.rows, `roofbook-${slug(sheetName)}-${fileSuffix(fy, currency)}.csv`);
 }

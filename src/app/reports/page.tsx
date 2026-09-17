@@ -5,7 +5,7 @@ import { FileBarChart, FileSpreadsheet, FileText, Download } from "lucide-react"
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge, PageHeader } from "@/components/ui/Primitives";
-import { Select } from "@/components/ui/Field";
+import { Select, Toggle } from "@/components/ui/Field";
 import { StatCard } from "@/components/ui/StatCard";
 import { useExpenses, useIncome, useLoans, usePortfolio, useProperties, usePurchases } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
@@ -48,6 +48,7 @@ export default function ReportsPage() {
 
   const years = availableFinancialYears(income, expenses);
   const [fy, setFy] = React.useState<number>(years[0] ?? new Date().getFullYear());
+  const [includeDepreciation, setIncludeDepreciation] = React.useState(true);
   const range = financialYearRange(fy);
 
   const money = (value: number, precise = false) => formatMoney(value, precise, currency);
@@ -83,7 +84,8 @@ export default function ReportsPage() {
       purchases.find((purchase) => purchase.propertyId === property.id),
       loans.find((loan) => loan.propertyId === property.id),
       fyIncome.filter((entry) => entry.propertyId === property.id),
-      fyExpenses.filter((entry) => entry.propertyId === property.id)
+      fyExpenses.filter((entry) => entry.propertyId === property.id),
+      { includeDepreciation }
     )
   );
 
@@ -102,7 +104,7 @@ export default function ReportsPage() {
     <>
       <PageHeader
         title="Reports"
-        subtitle={`Financial year ${financialYearLabel(fy)} · ${formatDate(range.start)} – ${formatDate(range.end)}`}
+        subtitle={`Financial year ${financialYearLabel(fy)} · ${formatDate(range.start)} – ${formatDate(range.end)} · ${includeDepreciation ? "Includes depreciation" : "Excludes depreciation"}`}
         actions={
           <>
             <Select
@@ -116,12 +118,15 @@ export default function ReportsPage() {
                 </option>
               ))}
             </Select>
+            <div className="w-full sm:w-56">
+              <Toggle checked={includeDepreciation} onChange={setIncludeDepreciation} label="Include depreciation" />
+            </div>
             {EXPORTS_ENABLED ? (
               <>
-                <Button variant="secondary" onClick={() => run(() => exportPortfolioPdf(fy, currency), "PDF report")}>
+                <Button variant="secondary" onClick={() => run(() => exportPortfolioPdf(fy, currency, { includeDepreciation }), "PDF report")}>
                   <FileText size={16} /> PDF
                 </Button>
-                <Button onClick={() => run(() => exportPortfolioWorkbook(fy, currency), "Excel workbook")}>
+                <Button onClick={() => run(() => exportPortfolioWorkbook(fy, currency, { includeDepreciation }), "Excel workbook")}>
                   <FileSpreadsheet size={16} /> Excel workbook
                 </Button>
                 <Button variant="secondary" onClick={() => run(() => exportBudgetWorkbook(currency), "Budgeting workbook")}>
@@ -166,10 +171,10 @@ export default function ReportsPage() {
             <div key={sheet} className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-bg/40 px-3 py-2.5">
               <span className="truncate text-sm font-medium">{sheet}</span>
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to Excel`} onClick={() => run(() => exportSingleSheet(sheet, fy, currency), sheet)}>
+                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to Excel`} onClick={() => run(() => exportSingleSheet(sheet, fy, currency, { includeDepreciation }), sheet)}>
                   <FileSpreadsheet size={16} />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to CSV`} onClick={() => run(() => exportSingleSheetCsv(sheet, fy, currency), sheet)}>
+                <Button variant="ghost" size="icon" aria-label={`Export ${sheet} to CSV`} onClick={() => run(() => exportSingleSheetCsv(sheet, fy, currency, { includeDepreciation }), sheet)}>
                   <Download size={16} />
                 </Button>
               </div>

@@ -1,9 +1,10 @@
 import { financialYearLabel, portfolioTotals, propertyMetrics, inFinancialYear } from "../calc";
+import type { CashflowOptions } from "../calc";
 import { loadSnapshot } from "../data";
 import { money, percent, titleise } from "../format";
 import type { CurrencyCode } from "../types";
 
-export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "AUD"): Promise<void> {
+export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "AUD", options: CashflowOptions = {}): Promise<void> {
   // Loaded on demand: jsPDF is browser-only and would otherwise ship in the initial bundle.
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
 
@@ -18,7 +19,8 @@ export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "
       snapshot.purchases.find((purchase) => purchase.propertyId === property.id),
       snapshot.loans.find((loan) => loan.propertyId === property.id),
       income.filter((entry) => entry.propertyId === property.id),
-      expenses.filter((entry) => entry.propertyId === property.id)
+      expenses.filter((entry) => entry.propertyId === property.id),
+      options
     )
   );
   const totals = portfolioTotals(metrics);
@@ -46,6 +48,7 @@ export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "
       ["LVR", percent(totals.lvr)],
       ["Income", amount(totals.income)],
       ["Expenses", amount(totals.expenses)],
+      ["Cashflow includes depreciation", options.includeDepreciation ?? true ? "Yes" : "No"],
       ["Net cashflow / year", amount(totals.cashflow)],
       ["Net cashflow (cash) / year", amount(totals.cashflowCash)],
       ["Gross yield", percent(totals.grossYield)],
