@@ -173,18 +173,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}>
+        <div className="flex overflow-x-auto overscroll-x-contain px-1">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="flex min-h-16 min-w-[4.75rem] flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium text-muted transition"
+          >
+            <Command size={20} />
+            <span className="w-full truncate text-center">Search</span>
+          </button>
           {mobileItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-h-16 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium text-muted transition",
+                "flex min-h-16 min-w-[4.75rem] flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium text-muted transition",
                 isActive(item.href) && "text-brand"
               )}
             >
               <item.icon size={20} />
-              {item.label}
+              <span className="w-full truncate text-center">{item.label}</span>
             </Link>
           ))}
         </div>

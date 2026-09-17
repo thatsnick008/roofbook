@@ -22,7 +22,7 @@ import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
 import { groupByMonth, recognizedIncome, sum } from "@/lib/calc";
-import { compactMoney, compactMoneyLacs, compactMoneyPerPeriod, daysUntil, formatDate, money, moneyPerPeriod, percent, titleise } from "@/lib/format";
+import { compactMoney, compactMoneyLacs, compactMoneyPerPeriod, daysUntil, formatDate, money, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { seedDemoData } from "@/lib/seed";
 import { useToast } from "@/components/ui/Toast";
@@ -173,7 +173,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
             <StatCard
               className="p-4"
               label="Portfolio value"
@@ -199,10 +199,10 @@ export default function DashboardPage() {
             />
             <StatCard
               className="p-4"
-              label="Net cashflow / month"
-              value={moneyPerPeriod(group.latestMonth?.net ?? 0, "month", false, group.currency)}
-              helper={`${group.latestMonth?.month ?? "This month"} · ${moneyPerPeriod(group.totals.cashflow, "year", false, group.currency)} total · ${moneyPerPeriod(group.totals.cashflowCash, "year", false, group.currency)} cash`}
-              tone={group.totals.cashflow >= 0 ? "positive" : "warning"}
+              label="Net cashflow / year"
+              value={compactMoneyPerPeriod(group.totals.cashflow, "year", group.currency)}
+              helper={`${compactMoneyLacs(group.totals.income, group.currency)} income - ${compactMoneyLacs(group.totals.expenses, group.currency)} total expenses`}
+              tone={group.totals.cashflow >= 0 ? "positive" : "negative"}
               icon={<TrendingUp size={20} />}
             />
             <StatCard

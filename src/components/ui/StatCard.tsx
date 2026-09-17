@@ -36,12 +36,12 @@ export function StatCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-            <p className="mt-2 text-xl font-bold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-2xl">{value}</p>
+            <p className="mt-2 max-w-full text-lg font-bold leading-tight [overflow-wrap:anywhere] sm:text-2xl">{value}</p>
           </div>
           {icon ? <div className={cn("rounded-xl bg-surface/70 p-2.5", toneClass)}>{icon}</div> : null}
         </div>
         <div>
-          {helper ? <p className="text-xs text-muted">{helper}</p> : null}
+          {helper ? <p className="text-xs text-muted [overflow-wrap:anywhere]">{helper}</p> : null}
           {typeof delta === "number" && Number.isFinite(delta) ? (
             <p
               className={cn(
