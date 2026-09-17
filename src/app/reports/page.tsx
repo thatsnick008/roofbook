@@ -15,6 +15,7 @@ import {
   financialYearLabel,
   financialYearRange,
   inFinancialYear,
+  managementFeeExpenses,
   propertyMetrics,
   recognizedIncome,
   sum
@@ -58,22 +59,21 @@ export default function ReportsPage() {
   const fyIncome = income.filter((entry) => inFinancialYear(entry.date, fy));
   const countedFyIncome = recognizedIncome(fyIncome);
   const fyExpenses = expenses.filter((entry) => inFinancialYear(entry.date, fy));
+  const fyExpenseRows = [...fyExpenses, ...managementFeeExpenses(countedFyIncome)];
 
   const gross = sum(countedFyIncome.map((entry) => entry.amount));
-  const fees = sum(countedFyIncome.map((entry) => entry.managementFee));
-  const deductible = sum(fyExpenses.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount));
-  const capital = sum(fyExpenses.filter((entry) => entry.capital).map((entry) => entry.amount));
+  const deductible = sum(fyExpenseRows.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount));
+  const capital = sum(fyExpenseRows.filter((entry) => entry.capital).map((entry) => entry.amount));
 
   const gearing = calculateGearing(
     properties.map((property) => {
       const propIncome = countedFyIncome.filter((entry) => entry.propertyId === property.id);
-      const propExpenses = fyExpenses.filter((entry) => entry.propertyId === property.id);
+      const propExpenses = fyExpenseRows.filter((entry) => entry.propertyId === property.id);
       const propGross = sum(propIncome.map((entry) => entry.amount));
-      const propFees = sum(propIncome.map((entry) => entry.managementFee));
       const propDeductible = sum(
         propExpenses.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount)
       );
-      return { propertyId: property.id, taxTreatment: property.taxTreatment, taxable: propGross - propFees - propDeductible };
+      return { propertyId: property.id, taxTreatment: property.taxTreatment, taxable: propGross - propDeductible };
     })
   );
   const taxable = gearing.combinedTaxable;
@@ -91,9 +91,9 @@ export default function ReportsPage() {
 
   const categoryTotals = React.useMemo(() => {
     const map = new Map<string, number>();
-    fyExpenses.forEach((entry) => map.set(entry.category, (map.get(entry.category) ?? 0) + entry.amount));
+    fyExpenseRows.forEach((entry) => map.set(entry.category, (map.get(entry.category) ?? 0) + entry.amount));
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
-  }, [fyExpenses]);
+  }, [fyExpenseRows]);
 
   const run = async (task: () => Promise<void> | void, label: string) => {
     await task();
@@ -140,7 +140,7 @@ export default function ReportsPage() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Gross income" value={money(gross)} tone="positive" />
-        <StatCard label="Deductible expenses" value={money(deductible + fees)} tone="negative" />
+        <StatCard label="Deductible expenses" value={money(deductible)} tone="negative" />
         <StatCard label="Capital works" value={money(capital)} tone="warning" />
         <StatCard
           label="Net taxable position"
@@ -241,7 +241,7 @@ export default function ReportsPage() {
                       <td>{titleise(category)}</td>
                       <td className="text-right font-medium">{money(amount)}</td>
                       <td className="text-right text-muted">
-                        {percent(sum(fyExpenses.map((entry) => entry.amount)) > 0 ? (amount / sum(fyExpenses.map((entry) => entry.amount))) * 100 : 0, 1)}
+                        {percent(sum(fyExpenseRows.map((entry) => entry.amount)) > 0 ? (amount / sum(fyExpenseRows.map((entry) => entry.amount))) * 100 : 0, 1)}
                       </td>
                     </tr>
                   ))}

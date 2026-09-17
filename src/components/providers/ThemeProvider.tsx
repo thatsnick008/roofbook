@@ -2,11 +2,12 @@
 
 import * as React from "react";
 
-type Theme = "light" | "dark" | "system";
+type Theme = "light" | "dark" | "eink" | "system";
+type ResolvedTheme = "light" | "dark" | "eink";
 
 interface ThemeContextValue {
   theme: Theme;
-  resolved: "light" | "dark";
+  resolved: ResolvedTheme;
   setTheme: (theme: Theme) => void;
   toggle: () => void;
 }
@@ -22,7 +23,7 @@ export const useTheme = () => React.useContext(ThemeContext);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<Theme>("system");
-  const [resolved, setResolved] = React.useState<"light" | "dark">("light");
+  const [resolved, setResolved] = React.useState<ResolvedTheme>("light");
 
   React.useEffect(() => {
     const stored = (window.localStorage.getItem("pcc-theme") as Theme | null) ?? "system";
@@ -35,7 +36,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const next = theme === "system" ? (media.matches ? "dark" : "light") : theme;
       setResolved(next);
       document.documentElement.classList.toggle("dark", next === "dark");
-      document.documentElement.style.colorScheme = next;
+      document.documentElement.classList.toggle("eink", next === "eink");
+      document.documentElement.style.colorScheme = next === "dark" ? "dark" : "light";
     };
     apply();
     media.addEventListener("change", apply);
@@ -52,7 +54,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       theme,
       resolved,
       setTheme,
-      toggle: () => setTheme(resolved === "dark" ? "light" : "dark")
+      toggle: () => setTheme(resolved === "light" ? "dark" : resolved === "dark" ? "eink" : "light")
     }),
     [theme, resolved, setTheme]
   );

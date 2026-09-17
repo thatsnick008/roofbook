@@ -32,6 +32,20 @@
   --warning: 251 191 36;
 }
 
+.eink {
+  --bg: 247 247 242;
+  --surface: 255 255 250;
+  --elevated: 239 239 232;
+  --border: 42 42 38;
+  --muted: 74 74 68;
+  --fg: 10 10 8;
+  --brand: 0 0 0;
+  --brand-soft: 232 232 224;
+  --positive: 18 18 16;
+  --negative: 18 18 16;
+  --warning: 18 18 16;
+}
+
 * {
   border-color: rgb(var(--border));
 }
@@ -58,6 +72,19 @@ body::before {
   background:
     radial-gradient(1000px 600px at 12% -10%, rgb(var(--brand) / 0.14), transparent 60%),
     radial-gradient(900px 500px at 100% 0%, rgb(var(--positive) / 0.1), transparent 55%);
+}
+
+.eink body {
+  -webkit-font-smoothing: auto;
+}
+
+.eink body::before {
+  display: none;
+}
+
+.eink * {
+  box-shadow: none !important;
+  text-shadow: none !important;
 }
 
 @layer components {

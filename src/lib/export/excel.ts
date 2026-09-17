@@ -7,6 +7,7 @@ import {
   availableFinancialYears,
   inFinancialYear,
   monthlyRepayment,
+  managementFeeExpenses,
   offsetSavingsPerYear,
   portfolioTotals,
   propertyMetrics,
@@ -163,6 +164,7 @@ export async function exportBudgetWorkbook(currency?: CurrencyCode): Promise<voi
       const rentalIncome = sum(countedIncome.map((entry) => entry.amount));
       const managementFees = sum(countedIncome.map((entry) => entry.managementFee));
       const operatingCosts = sum(expenses.filter((entry) => !entry.capital).map((entry) => entry.amount));
+      const totalOperatingCosts = managementFees + operatingCosts;
       const capitalWorks = sum(expenses.filter((entry) => entry.capital).map((entry) => entry.amount));
 
       annualRows.push({
@@ -185,9 +187,9 @@ export async function exportBudgetWorkbook(currency?: CurrencyCode): Promise<voi
         "Land tax": categoryTotal(expenses, "land-tax"),
         Interest: categoryTotal(expenses, "interest"),
         "Other operating costs": Math.max(operatingCosts - knownOperatingTotal(expenses), 0),
-        "Total operating costs": operatingCosts,
+        "Total operating costs": totalOperatingCosts,
         "Capital works": capitalWorks,
-        "Net operating cashflow / year": rentalIncome - managementFees - operatingCosts
+        "Net operating cashflow / year": rentalIncome - totalOperatingCosts
       });
     });
   });
@@ -233,6 +235,7 @@ export function buildSheets(snapshot: Snapshot, fy?: number, options: CashflowOp
   const income = fy ? snapshot.income.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.income;
   const countedIncome = recognizedIncome(income);
   const expenses = fy ? snapshot.expenses.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.expenses;
+  const expenseRows = [...expenses, ...managementFeeExpenses(countedIncome)];
 
   const metrics = snapshot.properties.map((property) =>
     propertyMetrics(
@@ -346,7 +349,7 @@ export function buildSheets(snapshot: Snapshot, fy?: number, options: CashflowOp
       Notes: entry.notes ?? ""
     }));
 
-  const expenseSheet: SheetRow[] = expenses
+  const expenseSheet: SheetRow[] = expenseRows
     .slice()
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((entry) => ({
@@ -363,30 +366,28 @@ export function buildSheets(snapshot: Snapshot, fy?: number, options: CashflowOp
     }));
 
   const categoryTotals = new Map<string, number>();
-  expenses.forEach((entry) => {
+  expenseRows.forEach((entry) => {
     categoryTotals.set(entry.category, (categoryTotals.get(entry.category) ?? 0) + entry.amount);
   });
 
   const taxSheet: SheetRow[] = [
     { Item: "Gross rental income", Amount: sum(countedIncome.map((entry) => entry.amount)) },
-    { Item: "Management fees", Amount: sum(countedIncome.map((entry) => entry.managementFee)) },
     ...[...categoryTotals.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([category, amount]) => ({ Item: titleise(category), Amount: round(amount) })),
     {
       Item: "Total deductible expenses",
-      Amount: round(sum(expenses.filter((entry) => entry.taxDeductible).map((entry) => entry.amount)))
+      Amount: round(sum(expenseRows.filter((entry) => entry.taxDeductible).map((entry) => entry.amount)))
     },
     {
       Item: "Capital works (non-deductible)",
-      Amount: round(sum(expenses.filter((entry) => entry.capital).map((entry) => entry.amount)))
+      Amount: round(sum(expenseRows.filter((entry) => entry.capital).map((entry) => entry.amount)))
     },
     {
       Item: "Net taxable position",
       Amount: round(
         sum(countedIncome.map((entry) => entry.amount)) -
-          sum(countedIncome.map((entry) => entry.managementFee)) -
-          sum(expenses.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount))
+          sum(expenseRows.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount))
       )
     }
   ];

@@ -13,7 +13,7 @@ import { IncomeForm } from "@/components/forms/IncomeForm";
 import { ExpenseForm } from "@/components/forms/ExpenseForm";
 import { useExpenses, useIncome, useProperties } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
-import { availableFinancialYears, financialYearLabel, inFinancialYear, managementFeeFor, recognizedIncome, rentAmountPerPeriod, sum } from "@/lib/calc";
+import { availableFinancialYears, financialYearLabel, inFinancialYear, managementFeeExpenses, managementFeeFor, recognizedIncome, rentAmountPerPeriod, sum } from "@/lib/calc";
 import { cn, formatDate, money, titleise } from "@/lib/format";
 import { exportSingleSheet, exportSingleSheetCsv } from "@/lib/export/excel";
 import { EXPORTS_ENABLED } from "@/lib/features";
@@ -366,11 +366,16 @@ function ExpensesPanel() {
     .filter((entry) => (category === "all" ? true : entry.category === category))
     .filter((entry) => (fy === "all" ? true : inFinancialYear(entry.date, fy)))
     .sort((a, b) => b.date.localeCompare(a.date));
+  const feeRows = managementFeeExpenses(income)
+    .filter((entry) => (propertyId === "all" ? true : entry.propertyId === propertyId))
+    .filter((entry) => (category === "all" ? true : entry.category === category))
+    .filter((entry) => (fy === "all" ? true : inFinancialYear(entry.date, fy)));
+  const displayRows = [...rows, ...feeRows].sort((a, b) => b.date.localeCompare(a.date));
 
-  const total = sum(rows.map((entry) => entry.amount));
-  const gst = sum(rows.map((entry) => entry.gst));
-  const deductible = sum(rows.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount));
-  const capital = sum(rows.filter((entry) => entry.capital).map((entry) => entry.amount));
+  const total = sum(displayRows.map((entry) => entry.amount));
+  const gst = sum(displayRows.map((entry) => entry.gst));
+  const deductible = sum(displayRows.filter((entry) => entry.taxDeductible && !entry.capital).map((entry) => entry.amount));
+  const capital = sum(displayRows.filter((entry) => entry.capital).map((entry) => entry.amount));
 
   const remove = async (id: string) => {
     await deleteRecord("expenses", id);
@@ -416,7 +421,7 @@ function ExpensesPanel() {
       <Card>
         <CardHeader
           title="Ledger"
-          subtitle={`${rows.length} entries`}
+          subtitle={`${displayRows.length} entries, including PM fees deducted from income`}
           action={
             <div className="flex flex-wrap gap-2">
               <Select
@@ -455,7 +460,7 @@ function ExpensesPanel() {
           }
         />
         <CardBody className="p-0">
-          {rows.length === 0 ? (
+          {displayRows.length === 0 ? (
             <EmptyState
               icon={<Receipt size={22} />}
               title="No expenses recorded"
@@ -487,7 +492,9 @@ function ExpensesPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((entry) => (
+                  {displayRows.map((entry) => {
+                    const derived = entry.id.startsWith("pm-fee-");
+                    return (
                     <tr key={entry.id}>
                       <td>{formatDate(entry.date)}</td>
                       <td className="max-w-[180px] truncate">
@@ -499,29 +506,32 @@ function ExpensesPanel() {
                       <td className="text-right text-muted">{money(entry.gst, true)}</td>
                       <td>
                         <Badge tone={entry.capital ? "warning" : entry.taxDeductible ? "positive" : "neutral"}>
-                          {entry.capital ? "Capital" : entry.taxDeductible ? "Deductible" : "Private"}
+                          {derived ? "PM fee" : entry.capital ? "Capital" : entry.taxDeductible ? "Deductible" : "Private"}
                         </Badge>
                       </td>
                       <td className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Edit"
-                            onClick={() => {
-                              setEditing(entry);
-                              setOpen(true);
-                            }}
-                          >
-                            <Pencil size={15} />
-                          </Button>
-                          <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => remove(entry.id)}>
-                            <Trash2 size={15} className="text-negative" />
-                          </Button>
-                        </div>
+                        {derived ? null : (
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Edit"
+                              onClick={() => {
+                                setEditing(entry);
+                                setOpen(true);
+                              }}
+                            >
+                              <Pencil size={15} />
+                            </Button>
+                            <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => remove(entry.id)}>
+                              <Trash2 size={15} className="text-negative" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

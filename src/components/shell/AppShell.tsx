@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Coins, Command, Moon, Plus, Sun } from "lucide-react";
+import { Coins, Command, Moon, Palette, Plus, Sun } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { navItems } from "@/lib/nav";
 import { cn, initials } from "@/lib/format";
@@ -148,8 +148,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <CurrencyScopePicker compact className="lg:hidden" />
             <SyncIndicator />
-            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={toggle} aria-label="Toggle theme">
-              {resolved === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={toggle} aria-label="Cycle theme">
+              {resolved === "dark" ? <Palette size={18} /> : resolved === "eink" ? <Sun size={18} /> : <Moon size={18} />}
             </Button>
             {session?.user ? (
               <div className="flex items-center gap-2">

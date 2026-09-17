@@ -92,7 +92,7 @@ export default function CalculatorPage() {
         valuation: acc.valuation + metric.valuation,
         debt: acc.debt + metric.debt,
         income: acc.income + metric.income,
-        expenses: acc.expenses + metric.expenses,
+        expenses: acc.expenses + metric.expenses + metric.interest,
         interest: acc.interest + metric.interest,
         capitalRequired: acc.capitalRequired + metric.capitalRequired
       }),
@@ -106,12 +106,12 @@ export default function CalculatorPage() {
     valuation: portfolio.valuation + input.price,
     debt: portfolio.debt + result.loan,
     income: portfolio.income + input.weeklyRent * 52,
-    expenses: portfolio.expenses + result.operatingTotal,
+    expenses: portfolio.expenses + result.operatingTotal + result.interest,
     interest: portfolio.interest + result.interest,
     capitalRequired: portfolio.capitalRequired + result.cashRequired
   };
-  const cumulativeCashflow = cumulative.income - cumulative.expenses - cumulative.interest;
-  const portfolioCashflow = portfolio.income - portfolio.expenses - portfolio.interest;
+  const cumulativeCashflow = cumulative.income - cumulative.expenses;
+  const portfolioCashflow = portfolio.income - portfolio.expenses;
 
   return (
     <>
@@ -275,13 +275,19 @@ export default function CalculatorPage() {
             </Card>
 
             <Card>
-              <CardHeader title="Annual operating costs" subtitle="Before loan interest and depreciation" />
+              <CardHeader title="Annual expenses" subtitle="Operating costs plus forecast loan interest" />
               <CardBody className="space-y-1">
                 {result.operating.map((line) => (
                   <CostRow key={line.label} label={line.label} note={line.note} amount={line.amount} currency={displayCurrency} />
                 ))}
                 <CostRow label="Total operating costs" amount={result.operatingTotal} currency={displayCurrency} emphasis />
                 <CostRow label="Loan interest" amount={result.interest} currency={displayCurrency} />
+                <CostRow
+                  label="Total expenses"
+                  amount={result.operatingTotal + result.interest}
+                  currency={displayCurrency}
+                  emphasis
+                />
                 <CostRow
                   label="Net cashflow"
                   amount={result.cashflowAfterInterest}
@@ -338,9 +344,9 @@ export default function CalculatorPage() {
                     currency={displayCurrency}
                   />
                   <ComparisonRow
-                    label="Operating costs"
+                    label="Total expenses"
                     current={portfolio.expenses}
-                    deal={result.operatingTotal}
+                    deal={result.operatingTotal + result.interest}
                     combined={cumulative.expenses}
                     currency={displayCurrency}
                   />

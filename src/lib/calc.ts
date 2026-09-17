@@ -53,6 +53,25 @@ export function recognizedIncome(income: IncomeEntry[]): IncomeEntry[] {
   return income.filter(isRecognizedIncome);
 }
 
+export function managementFeeExpenses(income: IncomeEntry[]): ExpenseEntry[] {
+  return recognizedIncome(income)
+    .filter((entry) => entry.managementFee > 0)
+    .map((entry) => ({
+      id: `pm-fee-${entry.id}`,
+      propertyId: entry.propertyId,
+      date: entry.date,
+      category: "property-management",
+      supplier: "Auto from income",
+      amount: entry.managementFee,
+      gst: 0,
+      taxDeductible: true,
+      capital: false,
+      notes: "Management fee deducted from income",
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt
+    }));
+}
+
 /** Flat per-period rent derived from the property's annual estimate and billing frequency. */
 export function rentAmountPerPeriod(property: Pick<Property, "annualRent" | "rentFrequency">): number {
   const divisor = property.rentFrequency === "weekly" ? 52 : property.rentFrequency === "fortnightly" ? 26 : 12;

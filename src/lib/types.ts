@@ -226,7 +226,7 @@ export interface AppSettings {
   currency: string;
   locale: string;
   financialYearStartMonth: number;
-  theme: "light" | "dark" | "system";
+  theme: "light" | "dark" | "eink" | "system";
   remindersEnabled: boolean;
   lastBackupAt?: string;
 }

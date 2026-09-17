@@ -1,4 +1,4 @@
-import { financialYearLabel, portfolioTotals, propertyMetrics, inFinancialYear } from "../calc";
+import { financialYearLabel, inFinancialYear, managementFeeExpenses, portfolioTotals, propertyMetrics } from "../calc";
 import type { CashflowOptions } from "../calc";
 import { loadSnapshot } from "../data";
 import { money, percent, titleise } from "../format";
@@ -11,7 +11,9 @@ export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "
   const snapshot = await loadSnapshot(currency);
   const amount = (value: number, precise = false) => money(value, precise, currency);
   const income = fy ? snapshot.income.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.income;
+  const countedIncome = income.filter((entry) => entry.category !== "rent" || entry.status === "received");
   const expenses = fy ? snapshot.expenses.filter((entry) => inFinancialYear(entry.date, fy)) : snapshot.expenses;
+  const expenseRows = [...expenses, ...managementFeeExpenses(countedIncome)];
 
   const metrics = snapshot.properties.map((property) =>
     propertyMetrics(
@@ -105,7 +107,7 @@ export async function exportPortfolioPdf(fy?: number, currency: CurrencyCode = "
   doc.addPage();
   autoTable(doc, {
     head: [["Date", "Property", "Category", "Supplier", "Amount", "GST", "Deductible"]],
-    body: expenses
+    body: expenseRows
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((entry) => [

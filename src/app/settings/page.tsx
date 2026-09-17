@@ -229,12 +229,13 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Appearance" subtitle="Light, dark or follow your device" action={<Palette size={18} className="text-muted" />} />
-          <CardBody className="grid grid-cols-3 gap-2">
+          <CardHeader title="Appearance" subtitle="Light, dark, e-ink or follow your device" action={<Palette size={18} className="text-muted" />} />
+          <CardBody className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(
               [
                 ["light", "Light", Sun],
                 ["dark", "Dark", Moon],
+                ["eink", "E-ink", Palette],
                 ["system", "System", Sparkles]
               ] as const
             ).map(([value, label, Icon]) => (

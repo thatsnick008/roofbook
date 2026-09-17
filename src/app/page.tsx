@@ -22,7 +22,7 @@ import { CashflowChart, CategoryDonut, EquityTrend } from "@/components/charts/C
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { useExpenses, useIncome, usePortfolio, useReminders } from "@/hooks/useData";
 import { useCurrencyFilter } from "@/components/providers/CurrencyProvider";
-import { groupByMonth, portfolioTotals, recognizedIncome, sum } from "@/lib/calc";
+import { groupByMonth, managementFeeExpenses, portfolioTotals, recognizedIncome, sum } from "@/lib/calc";
 import { compactMoney, compactMoneyLacs, compactMoneyPerPeriod, daysUntil, formatDate, money, percent, titleise } from "@/lib/format";
 import { exportPortfolioWorkbook } from "@/lib/export/excel";
 import { seedDemoData } from "@/lib/seed";
@@ -66,7 +66,7 @@ export default function DashboardPage() {
         const groupExpenses = expenses.filter((entry) => propertyIds.has(entry.propertyId));
         const monthly = groupByMonth(groupIncome, groupExpenses, annualDepreciation, { includeDepreciation });
         const categoryTotals = new Map<string, number>();
-        groupExpenses.forEach((entry) => {
+        [...groupExpenses, ...managementFeeExpenses(countedGroupIncome)].forEach((entry) => {
           categoryTotals.set(entry.category, (categoryTotals.get(entry.category) ?? 0) + entry.amount);
         });
         const categoryData = [...categoryTotals.entries()]

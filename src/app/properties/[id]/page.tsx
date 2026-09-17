@@ -21,6 +21,7 @@ import {
   financialYearLabel,
   groupByMonth,
   inFinancialYear,
+  managementFeeExpenses,
   monthlyRepayment,
   offsetSavingsPerYear,
   propertyMetrics,
@@ -78,6 +79,7 @@ export default function PropertyDetailPage() {
   const scopedExpenses = fy === "all" ? expenses : expenses.filter((entry) => inFinancialYear(entry.date, fy));
   const metric = propertyMetrics(property, purchase, loan, scopedIncome, scopedExpenses, { includeDepreciation });
   const monthly = groupByMonth(scopedIncome, scopedExpenses, metric.annualDepreciation, { includeDepreciation });
+  const expenseRows = [...expenses, ...managementFeeExpenses(income)].sort((a, b) => b.date.localeCompare(a.date));
 
   const remove = async () => {
     if (!window.confirm(`Delete ${property.name} and all associated records? This cannot be undone.`)) return;
@@ -361,7 +363,7 @@ export default function PropertyDetailPage() {
 
       {tab === "Expenses" ? (
         <Card>
-          <CardHeader title="Expense ledger" subtitle={`${expenses.length} entries · ${money(metric.expenses, false, property.currency)}`} />
+          <CardHeader title="Expense ledger" subtitle={`${expenseRows.length} entries, including PM fees · ${money(sum(expenseRows.map((entry) => entry.amount)), false, property.currency)}`} />
           <CardBody className="p-0">
             <div className="table-wrap border-0">
               <table className="data-table">
@@ -376,10 +378,9 @@ export default function PropertyDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses
-                    .slice()
-                    .sort((a, b) => b.date.localeCompare(a.date))
-                    .map((entry) => (
+                  {expenseRows.map((entry) => {
+                    const derived = entry.id.startsWith("pm-fee-");
+                    return (
                       <tr key={entry.id}>
                         <td>{formatDate(entry.date)}</td>
                         <td>{titleise(entry.category)}</td>
@@ -388,11 +389,12 @@ export default function PropertyDetailPage() {
                         <td className="text-right text-muted">{money(entry.gst, true, property.currency)}</td>
                         <td>
                           <Badge tone={entry.taxDeductible ? "positive" : "neutral"}>
-                            {entry.taxDeductible ? "Yes" : "No"}
+                            {derived ? "PM fee" : entry.taxDeductible ? "Yes" : "No"}
                           </Badge>
                         </td>
                       </tr>
-                    ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
