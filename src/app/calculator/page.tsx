@@ -22,7 +22,12 @@ const DEFAULTS: CalculatorInput = {
   lvr: 80,
   interestRate: 6.2,
   vacancyWeeks: 2,
-  maintenanceAmount: 1_690
+  maintenanceAmount: 1_690,
+  councilRates: Math.round(Math.max((750_000 * stateLookup("QLD").councilRatesPercent) / 100, stateLookup("QLD").councilRatesMinimum)),
+  insurance: Math.round(Math.max((750_000 * stateLookup("QLD").insurancePercent) / 100, stateLookup("QLD").insuranceMinimum)),
+  managementFeePercent: stateLookup("QLD").managementFeePercent,
+  offsetCash: 0,
+  annualDepreciation: 0
 };
 
 const STORAGE_KEY = "roofbook-calculator-by-state";
@@ -74,7 +79,17 @@ export default function CalculatorPage() {
   const selectState = (code: string) => {
     const lookup = stateLookup(code);
     const saved = readSavedInputs()[code];
-    patch(saved ?? { state: code, suburb: "", weeklyRent: Math.round((input.price * lookup.typicalGrossYield) / 100 / 52) });
+    const defaults = {
+      state: code,
+      suburb: "",
+      weeklyRent: Math.round((input.price * lookup.typicalGrossYield) / 100 / 52),
+      councilRates: Math.round(Math.max((input.price * lookup.councilRatesPercent) / 100, lookup.councilRatesMinimum)),
+      insurance: Math.round(Math.max((input.price * lookup.insurancePercent) / 100, lookup.insuranceMinimum)),
+      managementFeePercent: lookup.managementFeePercent,
+      offsetCash: 0,
+      annualDepreciation: 0
+    };
+    patch(saved ?? defaults);
   };
 
   const portfolio = React.useMemo(() => {
@@ -224,6 +239,43 @@ export default function CalculatorPage() {
                   onValueChange={(value) => patch({ maintenanceAmount: value })}
                 />
               </Field>
+              <Field label="Council rates (annual)">
+                <MoneyInput
+                  value={input.councilRates}
+                  currency={displayCurrency}
+                  onValueChange={(value) => patch({ councilRates: value })}
+                />
+              </Field>
+              <Field label="Insurance (annual)">
+                <MoneyInput
+                  value={input.insurance}
+                  currency={displayCurrency}
+                  onValueChange={(value) => patch({ insurance: value })}
+                />
+              </Field>
+              <Field label="Property management %">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  value={input.managementFeePercent}
+                  onChange={(event) => patch({ managementFeePercent: Number(event.target.value) })}
+                />
+              </Field>
+              <Field label="Offset cash">
+                <MoneyInput
+                  value={input.offsetCash || 0}
+                  currency={displayCurrency}
+                  onValueChange={(value) => patch({ offsetCash: value })}
+                />
+              </Field>
+              <Field label="Depreciation (annual)">
+                <MoneyInput
+                  value={input.annualDepreciation || 0}
+                  currency={displayCurrency}
+                  onValueChange={(value) => patch({ annualDepreciation: value })}
+                />
+              </Field>
             </div>
           </CardBody>
         </Card>
@@ -282,6 +334,11 @@ export default function CalculatorPage() {
                 ))}
                 <CostRow label="Total operating costs" amount={result.operatingTotal} currency={displayCurrency} emphasis />
                 <CostRow label="Loan interest" amount={result.interest} currency={displayCurrency} />
+                <CostRow
+                  label="Total income"
+                  amount={result.effectiveRent}
+                  currency={displayCurrency}
+                />
                 <CostRow
                   label="Total expenses"
                   amount={result.operatingTotal + result.interest}

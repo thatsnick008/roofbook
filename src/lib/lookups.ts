@@ -321,6 +321,11 @@ export interface CalculatorInput {
   interestRate: number;
   vacancyWeeks: number;
   maintenanceAmount: number;
+  councilRates: number;
+  insurance: number;
+  managementFeePercent: number;
+  offsetCash: number;
+  annualDepreciation: number;
 }
 
 export interface CostLine {
@@ -353,6 +358,15 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
   const loan = Math.round((price * lvr) / 100);
   const deposit = price - loan;
   const lmi = lendersMortgageInsurance(price, lvr);
+  const managementFeePercent = input.managementFeePercent > 0 ? input.managementFeePercent : lookup.managementFeePercent;
+  const councilRates = input.councilRates > 0
+    ? input.councilRates
+    : Math.round(Math.max((price * lookup.councilRatesPercent) / 100, lookup.councilRatesMinimum));
+  const insurance = input.insurance > 0
+    ? input.insurance
+    : Math.round(Math.max((price * lookup.insurancePercent) / 100, lookup.insuranceMinimum));
+  const offsetCash = Math.max(input.offsetCash ?? 0, 0);
+  const annualDepreciation = Math.max(input.annualDepreciation ?? 0, 0);
 
   const upfront: CostLine[] = [
     { label: "Stamp duty", amount: stampDuty(price, input.state), note: `${lookup.code} investor rate` },
@@ -369,8 +383,6 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
   const annualRent = Math.max(input.weeklyRent, 0) * 52;
   const vacancyLoss = Math.round(input.weeklyRent * input.vacancyWeeks);
   const effectiveRent = Math.max(annualRent - vacancyLoss, 0);
-  const councilRates = Math.round(Math.max((price * lookup.councilRatesPercent) / 100, lookup.councilRatesMinimum));
-  const insurance = Math.round(Math.max((price * lookup.insurancePercent) / 100, lookup.insuranceMinimum));
   const strata = attachedDwelling(input.propertyType)
     ? suburbsForState(input.state).find((entry) => entry.suburb.toLowerCase() === input.suburb.trim().toLowerCase())
         ?.strataAnnual ?? 3_200
@@ -379,8 +391,8 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
   const operating: CostLine[] = [
     {
       label: "Property management",
-      amount: Math.round((effectiveRent * lookup.managementFeePercent) / 100),
-      note: `${lookup.managementFeePercent}% of rent`
+      amount: Math.round((effectiveRent * managementFeePercent) / 100),
+      note: `${managementFeePercent}% of rent`
     },
     {
       label: "Letting & re-letting fees",
@@ -397,11 +409,13 @@ export function estimateProperty(input: CalculatorInput): CalculatorResult {
       amount: Math.max(Math.round(input.maintenanceAmount), 0),
       note: "Annual allowance"
     },
-    { label: "Vacancy allowance", amount: vacancyLoss, note: `${input.vacancyWeeks} weeks` }
+    { label: "Vacancy allowance", amount: vacancyLoss, note: `${input.vacancyWeeks} weeks` },
+    ...(annualDepreciation > 0 ? [{ label: "Depreciation", amount: annualDepreciation, note: "Annual allowance" }] : [])
   ].filter((line) => line.amount > 0);
 
   const operatingTotal = operating.reduce((total, line) => total + line.amount, 0);
-  const interest = Math.round((loan * input.interestRate) / 100);
+  const effectiveLoan = Math.max(loan - offsetCash, 0);
+  const interest = Math.round((effectiveLoan * input.interestRate) / 100);
   const cashRequired = Math.max(deposit + upfrontTotal - lmi, 0);
   const cashflowBeforeInterest = annualRent - operatingTotal;
 
